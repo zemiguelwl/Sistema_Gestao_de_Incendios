@@ -118,7 +118,7 @@ O sistema foi construído segundo os princípios de **Responsabilidade Única (S
 ## 📁 Estrutura de Ficheiros
 
 ```
-LP_8220942/
+SGI/
 │
 ├── cmake-build-debug/          # Binários gerados pelo CMake (não versionar)
 │
