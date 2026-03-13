@@ -1,56 +1,98 @@
 #ifndef MENU_H
 #define MENU_H
 
-#include "modelos.h"
-
 /**
  * @file menu.h
- * @brief Declarações relacionadas com os menus principais da aplicação.
+ * @brief Submenus interativos do Sistema de Gestão de Incêndios.
  *
- * Cada função representa um submenu dedicado à gestão de um tipo de entidade
- * (ocorrências, bombeiros, equipamentos, intervenções, relatórios).
+ * Cada função representa um submenu dedicado a uma área funcional
+ * da aplicação. O fluxo de navegação é:
+ *
+ * @code
+ *   mostrarMenuPrincipal()
+ *     ├── menuOcorrencias()
+ *     ├── menuBombeiros()
+ *     ├── menuEquipamentos()
+ *     ├── menuIntervencoes()
+ *     └── menuRelatorios()
+ * @endcode
+ *
+ * Os submenus executam em ciclo até o utilizador escolher voltar
+ * ao menu principal.
+ *
+ * @author José (8220942)
+ * @date 2024
+ * @version 2.0
  */
 
+#include "modelos.h"
+
+
+/* ========================================================================= */
+/*  MENU PRINCIPAL                                                           */
+/* ========================================================================= */
+
 /**
- * @brief Mostra o menu principal do sistema.
+ * @brief Apresenta o menu principal e encaminha para os submenus.
  *
- * @param sistema Ponteiro para o sistema de gestão de incêndios.
+ * Executa em ciclo até o utilizador optar por sair.
+ * Guarda os dados automaticamente antes de encerrar.
+ *
+ * @param sistema Ponteiro para o contexto global do sistema
  */
 void mostrarMenuPrincipal(SistemaGestaoIncendios *sistema);
 
+
+/* ========================================================================= */
+/*  SUBMENUS POR ENTIDADE                                                    */
+/* ========================================================================= */
+
 /**
- * @brief Menu de operações relacionadas com Ocorrências.
+ * @brief Submenu de gestão de ocorrências.
  *
- * @param sistema Ponteiro para o sistema de gestão de incêndios.
+ * Operações disponíveis: criar, listar, atualizar, inativar, reativar.
+ *
+ * @param sistema Ponteiro para o contexto global do sistema
  */
 void menuOcorrencias(SistemaGestaoIncendios *sistema);
 
 /**
- * @brief Menu de operações relacionadas com Bombeiros.
+ * @brief Submenu de gestão de bombeiros.
  *
- * @param sistema Ponteiro para o sistema de gestão de incêndios.
+ * Operações disponíveis: criar, listar, atualizar, inativar, reativar.
+ *
+ * @param sistema Ponteiro para o contexto global do sistema
  */
 void menuBombeiros(SistemaGestaoIncendios *sistema);
 
 /**
- * @brief Menu de operações relacionadas com Equipamentos.
+ * @brief Submenu de gestão de equipamentos.
  *
- * @param sistema Ponteiro para o sistema de gestão de incêndios.
+ * Operações disponíveis: criar, listar, atualizar, inativar, reativar.
+ *
+ * @param sistema Ponteiro para o contexto global do sistema
  */
 void menuEquipamentos(SistemaGestaoIncendios *sistema);
 
 /**
- * @brief Menu de operações relacionadas com Intervenções.
+ * @brief Submenu de gestão de intervenções.
  *
- * @param sistema Ponteiro para o sistema de gestão de incêndios.
+ * Operações disponíveis: criar, listar, iniciar execução, concluir,
+ * adicionar bombeiros, adicionar equipamentos, inativar, reativar.
+ *
+ * @param sistema Ponteiro para o contexto global do sistema
  */
 void menuIntervencoes(SistemaGestaoIncendios *sistema);
 
 /**
- * @brief Menu de relatórios estatísticos e consultas agregadas.
+ * @brief Submenu de relatórios estatísticos e operacionais.
  *
- * @param sistema Ponteiro para o sistema de gestão de incêndios.
+ * Agrupa relatórios por categoria: ocorrências, intervenções,
+ * bombeiros, equipamentos e estratégicos.
+ *
+ * @param sistema Ponteiro para o contexto global do sistema
  */
 void menuRelatorios(SistemaGestaoIncendios *sistema);
+
 
 #endif /* MENU_H */

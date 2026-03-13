@@ -1,33 +1,29 @@
-#include <stdio.h>
 #include "menu.h"
 #include "utils.h"
 #include "logs.h"
-
-
 #include "ocorrencias.h"
 #include "intervencoes.h"
 #include "bombeiros.h"
 #include "equipamentos.h"
 #include "relatorios.h"
 #include "sugestoes.h"
-
+#include <stdio.h>
 
 /**
  * @file menu.c
  * @brief Implementação dos menus principais e navegação da aplicação.
  *
- * Funcionalidades principais:
+ * Funcionalidades:
  *  - Menu principal do sistema
- *  - Menus dedicados a:
- *      * Ocorrências
- *      * Bombeiros
- *      * Equipamentos
- *      * Intervenções
- *      * Relatórios
+ *  - Menus dedicados a: Ocorrências, Bombeiros, Equipamentos,
+ *    Intervenções e Relatórios
  */
 
 
-/* MENU PRINCIPAL */
+/* ========================================================================= */
+/*  MENU PRINCIPAL                                                           */
+/* ========================================================================= */
+
 void mostrarMenuPrincipal(SistemaGestaoIncendios *sistema) {
     int opcao;
 
@@ -45,15 +41,15 @@ void mostrarMenuPrincipal(SistemaGestaoIncendios *sistema) {
         opcao = getInt(0, 5, "Escolha uma opção");
 
         switch (opcao) {
-            case 1: menuOcorrencias(sistema); break;
+            case 1: menuOcorrencias(sistema);  break;
             case 2: menuIntervencoes(sistema); break;
-            case 3: menuBombeiros(sistema); break;
+            case 3: menuBombeiros(sistema);    break;
             case 4: menuEquipamentos(sistema); break;
-            case 5: menuRelatorios(sistema); break;
-
+            case 5: menuRelatorios(sistema);   break;
             case 0:
                 printf("\nA guardar dados e sair...\n");
-                registarLog("INFO", "MENU", "SAIR", "Utilizador saiu do programa");
+                registarLog("INFO", "MENU", "SAIR",
+                            "Utilizador saiu do programa");
                 break;
             default:
                 printf("Opção inválida.\n");
@@ -62,7 +58,11 @@ void mostrarMenuPrincipal(SistemaGestaoIncendios *sistema) {
     } while (opcao != 0);
 }
 
-/* MENU OCORRÊNCIAS */
+
+/* ========================================================================= */
+/*  MENU OCORRÊNCIAS                                                         */
+/* ========================================================================= */
+
 void menuOcorrencias(SistemaGestaoIncendios *sistema) {
     int opcao;
 
@@ -78,11 +78,11 @@ void menuOcorrencias(SistemaGestaoIncendios *sistema) {
         opcao = getInt(0, 5, "Escolha uma opção");
 
         switch (opcao) {
-            case 1: criarOcorrencia(sistema); break;
-            case 2: listarOcorrencias(sistema); break;
+            case 1: criarOcorrencia(sistema);    break;
+            case 2: listarOcorrencias(sistema);  break;
             case 3: atualizarOcorrencia(sistema); break;
-            case 4: inativarOcorrencia(sistema); break;
-            case 5: reativarOcorrencia(sistema); break;
+            case 4: inativarOcorrencia(sistema);  break;
+            case 5: reativarOcorrencia(sistema);  break;
             case 0: break;
             default: printf("Opção inválida.\n");
         }
@@ -90,7 +90,11 @@ void menuOcorrencias(SistemaGestaoIncendios *sistema) {
     } while (opcao != 0);
 }
 
-/* MENU BOMBEIROS */
+
+/* ========================================================================= */
+/*  MENU BOMBEIROS                                                           */
+/* ========================================================================= */
+
 void menuBombeiros(SistemaGestaoIncendios *sistema) {
     int opcao;
 
@@ -106,11 +110,11 @@ void menuBombeiros(SistemaGestaoIncendios *sistema) {
         opcao = getInt(0, 5, "Escolha uma opção");
 
         switch (opcao) {
-            case 1: criarBombeiro(sistema); break;
-            case 2: listarBombeiros(sistema); break;
+            case 1: criarBombeiro(sistema);    break;
+            case 2: listarBombeiros(sistema);  break;
             case 3: atualizarBombeiro(sistema); break;
-            case 4: inativarBombeiro(sistema); break;
-            case 5: reativarBombeiro(sistema); break;
+            case 4: inativarBombeiro(sistema);  break;
+            case 5: reativarBombeiro(sistema);  break;
             case 0: break;
             default: printf("Opção inválida.\n");
         }
@@ -118,7 +122,11 @@ void menuBombeiros(SistemaGestaoIncendios *sistema) {
     } while (opcao != 0);
 }
 
-/* MENU EQUIPAMENTOS */
+
+/* ========================================================================= */
+/*  MENU EQUIPAMENTOS                                                        */
+/* ========================================================================= */
+
 void menuEquipamentos(SistemaGestaoIncendios *sistema) {
     int opcao;
 
@@ -134,11 +142,11 @@ void menuEquipamentos(SistemaGestaoIncendios *sistema) {
         opcao = getInt(0, 5, "Escolha uma opção");
 
         switch (opcao) {
-            case 1: criarEquipamento(sistema); break;
-            case 2: listarEquipamentos(sistema); break;
+            case 1: criarEquipamento(sistema);    break;
+            case 2: listarEquipamentos(sistema);  break;
             case 3: atualizarEquipamento(sistema); break;
-            case 4: inativarEquipamento(sistema); break;
-            case 5: reativarEquipamento(sistema); break;
+            case 4: inativarEquipamento(sistema);  break;
+            case 5: reativarEquipamento(sistema);  break;
             case 0: break;
             default: printf("Opção inválida.\n");
         }
@@ -146,7 +154,11 @@ void menuEquipamentos(SistemaGestaoIncendios *sistema) {
     } while (opcao != 0);
 }
 
-/* MENU INTERVENÇÕES*/
+
+/* ========================================================================= */
+/*  MENU INTERVENÇÕES                                                        */
+/* ========================================================================= */
+
 void menuIntervencoes(SistemaGestaoIncendios *sistema) {
     int opcao;
 
@@ -165,14 +177,14 @@ void menuIntervencoes(SistemaGestaoIncendios *sistema) {
         opcao = getInt(0, 8, "Escolha uma opção");
 
         switch (opcao) {
-            case 1: criarIntervencao(sistema); break;
-            case 2: listarIntervencoes(sistema); break;
-            case 3: adicionarBombeirosIntervencao(sistema, NULL); break;
-            case 4: adicionarEquipamentosIntervencao(sistema, NULL); break;
-            case 5: iniciarExecucaoIntervencao(sistema); break;
-            case 6: concluirIntervencao(sistema); break;
-            case 7: inativarIntervencao(sistema); break;
-            case 8: reativarIntervencao(sistema); break;
+            case 1: criarIntervencao(sistema);                        break;
+            case 2: listarIntervencoes(sistema);                      break;
+            case 3: adicionarBombeirosIntervencao(sistema, NULL);     break;
+            case 4: adicionarEquipamentosIntervencao(sistema, NULL);  break;
+            case 5: iniciarExecucaoIntervencao(sistema);              break;
+            case 6: concluirIntervencao(sistema);                     break;
+            case 7: inativarIntervencao(sistema);                     break;
+            case 8: reativarIntervencao(sistema);                     break;
             case 0: break;
             default: printf("Opção inválida.\n");
         }
@@ -180,70 +192,69 @@ void menuIntervencoes(SistemaGestaoIncendios *sistema) {
     } while (opcao != 0);
 }
 
-/* MENU RELATÓRIOS */
+
+/* ========================================================================= */
+/*  MENU RELATÓRIOS                                                          */
+/* ========================================================================= */
+
 void menuRelatorios(SistemaGestaoIncendios *sistema) {
     int opcao;
 
     do {
         printf("\n=== RELATÓRIOS ===\n");
 
-        printf("\n    OCORRÊNCIAS \n");
-        printf("1. Ocorrências por Estado\n");
-        printf("2. Ocorrências por Tipo\n");
-        printf("3. Ocorrências por Prioridade\n");
-        printf("4. Tempo de Resposta das Ocorrências\n");
-        printf("5. Ocorrências por Localização\n");
-        printf("6. Frequência de Incidentes (Ano)\n");
+        printf("\n    OCORRÊNCIAS\n");
+        printf("1.  Ocorrências por Estado\n");
+        printf("2.  Ocorrências por Tipo\n");
+        printf("3.  Ocorrências por Prioridade\n");
+        printf("4.  Tempo de Resposta das Ocorrências\n");
+        printf("5.  Ocorrências por Localização\n");
+        printf("6.  Frequência de Incidentes (Ano)\n");
 
-        printf("\n    INTERVENÇÕES    \n");
-        printf("7. Intervenções por Estado\n");
-        printf("8. Duração Média das Intervenções\n");
-        printf("9. Recursos Mais Utilizados\n");
+        printf("\n    INTERVENÇÕES\n");
+        printf("7.  Intervenções por Estado\n");
+        printf("8.  Duração Média das Intervenções\n");
+        printf("9.  Recursos Mais Utilizados\n");
         printf("10. Eficiência das Intervenções\n");
 
-        printf("\n    BOMBEIROS    \n");
+        printf("\n    BOMBEIROS\n");
         printf("11. Disponibilidade por Especialidade\n");
         printf("12. Ranking de Desempenho dos Bombeiros\n");
 
-        printf("\n    EQUIPAMENTOS    \n");
+        printf("\n    EQUIPAMENTOS\n");
         printf("13. Inventário de Equipamentos\n");
         printf("14. Equipamentos em Manutenção\n");
         printf("15. Utilização de Equipamentos por Tipo de Intervenção\n");
         printf("16. Ranking de Equipamentos Mais Utilizados\n");
 
-        printf("\n    RELATÓRIOS EXTRA    \n");
+        printf("\n    RELATÓRIOS EXTRA\n");
         printf("17. Capacidade Operacional\n");
         printf("18. Carga de Trabalho por Período\n");
 
-        printf("\n0. Voltar\n");
+        printf("\n0.  Voltar\n");
 
         opcao = getInt(0, 18, "Escolha uma opção");
 
         switch (opcao) {
-            case 1:  relatorioOcorrenciasPorEstado(sistema); break;
-            case 2:  relatorioOcorrenciasPorTipo(sistema); break;
-            case 3:  relatorioOcorrenciasPorPrioridade(sistema); break;
-            case 4:  relatorioTempoRespostaOcorrencias(sistema); break;
-            case 5:  relatorioOcorrenciasPorLocalizacao(sistema); break;
-            case 6:  relatorioFrequenciaIncidentes(sistema); break;
-
-            case 7:  relatorioIntervencoesPorEstado(sistema); break;
-            case 8:  relatorioDuracaoMediaIntervencoes(sistema); break;
-            case 9:  relatorioRecursosMaisUtilizados(sistema); break;
-            case 10: relatorioEficienciaIntervencoes(sistema); break;
-
-            case 11: relatorioDisponibilidadeBombeiros(sistema); break;
-            case 12: relatorioRankingDesempenhoBombeiros(sistema); break;
-
-            case 13: relatorioInventarioEquipamentos(sistema); break;
-            case 14: relatorioEquipamentosEmManutencao(sistema); break;
-            case 15: relatorioUtilizacaoEquipamentosPorTipoIntervencao(sistema); break;
-            case 16: relatorioRankingEquipamentos(sistema); break;
-
-            case 17: relatorioCapacidadeOperacional(sistema); break;
-            case 18: relatorioCargaTrabalhoPeriodo(sistema); break;
-
-            case 0:  break;
+            case  1: relatorioOcorrenciasPorEstado(sistema);                       break;
+            case  2: relatorioOcorrenciasPorTipo(sistema);                         break;
+            case  3: relatorioOcorrenciasPorPrioridade(sistema);                   break;
+            case  4: relatorioTempoRespostaOcorrencias(sistema);                   break;
+            case  5: relatorioOcorrenciasPorLocalizacao(sistema);                  break;
+            case  6: relatorioFrequenciaIncidentes(sistema);                       break;
+            case  7: relatorioIntervencoesPorEstado(sistema);                      break;
+            case  8: relatorioDuracaoMediaIntervencoes(sistema);                   break;
+            case  9: relatorioRecursosMaisUtilizados(sistema);                     break;
+            case 10: relatorioEficienciaIntervencoes(sistema);                     break;
+            case 11: relatorioDisponibilidadeBombeiros(sistema);                   break;
+            case 12: relatorioRankingDesempenhoBombeiros(sistema);                 break;
+            case 13: relatorioInventarioEquipamentos(sistema);                     break;
+            case 14: relatorioEquipamentosEmManutencao(sistema);                   break;
+            case 15: relatorioUtilizacaoEquipamentosPorTipoIntervencao(sistema);   break;
+            case 16: relatorioRankingEquipamentos(sistema);                        break;
+            case 17: relatorioCapacidadeOperacional(sistema);                      break;
+            case 18: relatorioCargaTrabalhoPeriodo(sistema);                       break;
+            case  0: break;
             default: printf("Opção inválida.\n");
         }
 

@@ -2,20 +2,18 @@
 #include "ocorrencias.h"
 #include "bombeiros.h"
 #include "equipamentos.h"
+#include "sugestoes.h"
 #include "logs.h"
 #include "utils.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "sugestoes.h"
 
 /**
  * @file intervencoes.c
  * @brief Implementação das operações sobre Intervenções.
  *
- * Funcionalidades principais:
+ * Funcionalidades:
  *  - Criar intervenções para ocorrências reportadas
  *  - Adicionar bombeiros e equipamentos
  *  - Iniciar execução da intervenção
@@ -23,12 +21,15 @@
  *  - Listar intervenções ativas
  *  - Inativar e reativar intervenções
  *  - Consultar intervenção por ID
- *  - Aplicação de sugestões automáticas de recursos
+ *  - Sugestões automáticas de recursos baseadas em histórico
  */
 
 
-/*  PROCURAR INTERVENÇÃO POR ID      */
-Intervencao* procurarIntervencaoPorId(const SistemaGestaoIncendios *sistema, int id) {
+/* ========================================================================= */
+/*  PROCURAR INTERVENÇÃO POR ID                                              */
+/* ========================================================================= */
+
+Intervencao *procurarIntervencaoPorId(const SistemaGestaoIncendios *sistema, int id) {
     for (int i = 0; i < sistema->intervencoes.tamanho; i++) {
         if (sistema->intervencoes.dados[i].idIntervencao == id) {
             return &sistema->intervencoes.dados[i];
@@ -38,12 +39,13 @@ Intervencao* procurarIntervencaoPorId(const SistemaGestaoIncendios *sistema, int
 }
 
 
-/*  CRIAR INTERVENÇÃO */
+/* ========================================================================= */
+/*  CRIAR INTERVENÇÃO                                                        */
+/* ========================================================================= */
+
 int criarIntervencao(SistemaGestaoIncendios *sistema) {
+    printf("|CRIAR NOVA INTERVENÇÃO|\n\n");
 
-    printf("|CRIAR NOVA INTERVENÇÃO|\n");
-
-    /* Verificar se existem ocorrências */
     if (sistema->ocorrencias.tamanho == 0) {
         printf("Não existem ocorrências registadas.\n");
         printf("Crie uma ocorrência primeiro.\n");
@@ -52,7 +54,7 @@ int criarIntervencao(SistemaGestaoIncendios *sistema) {
         return -1;
     }
 
-    /* Mostrar ocorrências válidas */
+    /* Mostrar ocorrências elegíveis (REPORTADAS e ativas) */
     printf("OCORRÊNCIAS DISPONÍVEIS (REPORTADAS):\n\n");
 
     int encontrou = 0;
@@ -80,21 +82,21 @@ int criarIntervencao(SistemaGestaoIncendios *sistema) {
 
     Ocorrencia *o = procurarOcorrenciaPorId(sistema, idOcorrencia);
     if (o == NULL || !o->ativo || o->estado != REPORTADA) {
-        printf("\nOcorrência inválida.\n");
+        printf("\nOcorrência inválida ou não elegível.\n");
         printf("Prima ENTER para voltar ao menu...");
         getchar();
         return -1;
     }
 
-    /* Criar intervenção */
+    /* Construir nova intervenção */
     Intervencao nova;
     nova.idIntervencao = sistema->proximoIdIntervencao;
-    nova.idOcorrencia = idOcorrencia;
-    nova.inicio = lerDataHora("Data e hora de início da intervenção");
+    nova.idOcorrencia  = idOcorrencia;
+    nova.inicio        = lerDataHora("Data e hora de início da intervenção");
 
+    /* Validar que o início é posterior ao registo da ocorrência */
     if (!validarDataHoraFimMaiorQueInicio(&o->dataHora, &nova.inicio)) {
-        printf("\nErro: A data/hora de início da intervenção\n");
-        printf("deve ser posterior à data/hora da ocorrência.\n");
+        printf("\nErro: A data/hora de início deve ser posterior à data/hora da ocorrência.\n");
         printf("Ocorrência registada em: %02d/%02d/%04d %02d:%02d\n",
                o->dataHora.dia, o->dataHora.mes, o->dataHora.ano,
                o->dataHora.hora, o->dataHora.minuto);
@@ -103,110 +105,102 @@ int criarIntervencao(SistemaGestaoIncendios *sistema) {
         return -1;
     }
 
-
-    nova.fimDefinido = 0;
-    nova.fim.dia = 0;
-    nova.fim.mes = 0;
-    nova.fim.ano = 0;
-    nova.fim.hora = 0;
+    nova.fim.dia    = 0;
+    nova.fim.mes    = 0;
+    nova.fim.ano    = 0;
+    nova.fim.hora   = 0;
     nova.fim.minuto = 0;
+    nova.fimDefinido = 0;
 
     nova.estado = EM_PLANEAMENTO;
-    nova.ativo = 1;
+    nova.ativo  = 1;
 
-
-    nova.idsBombeiros = malloc(CAPACIDADE_INICIAL * sizeof(int));
+    /* Alocar arrays dinâmicos */
+    nova.idsBombeiros    = malloc(CAPACIDADE_INICIAL * sizeof(int));
     nova.idsEquipamentos = malloc(CAPACIDADE_INICIAL * sizeof(int));
 
     if (nova.idsBombeiros == NULL || nova.idsEquipamentos == NULL) {
         free(nova.idsBombeiros);
         free(nova.idsEquipamentos);
-        printf("Erro de memória.\n");
+        printf("\nErro de memória ao criar intervenção.\n");
         return -1;
     }
 
-    nova.numBombeiros = 0;
-    nova.numEquipamentos = 0;
-    nova.capacidadeBombeiros = CAPACIDADE_INICIAL;
+    nova.numBombeiros          = 0;
+    nova.numEquipamentos       = 0;
+    nova.capacidadeBombeiros   = CAPACIDADE_INICIAL;
     nova.capacidadeEquipamentos = CAPACIDADE_INICIAL;
 
     if (!expandirListaIntervencoesSeNecessario(&sistema->intervencoes)) {
         free(nova.idsBombeiros);
         free(nova.idsEquipamentos);
-        printf("Erro ao expandir lista.\n");
+        printf("\nErro ao expandir lista de intervenções.\n");
         return -1;
     }
 
-    /* Guardar intervenção */
     sistema->intervencoes.dados[sistema->intervencoes.tamanho] = nova;
     sistema->intervencoes.tamanho++;
     sistema->proximoIdIntervencao++;
 
-    /* Obter ponteiro para a intervenção criada */
-    Intervencao *intv =
-        &sistema->intervencoes.dados[sistema->intervencoes.tamanho - 1];
+    /* Ponteiro para a intervenção recém-criada */
+    Intervencao *intv = &sistema->intervencoes.dados[sistema->intervencoes.tamanho - 1];
 
-    /* ADICIONAR RECURSOS NA CRIAÇÃO */
+    /* Adicionar recursos durante a criação */
     adicionarBombeirosIntervencao(sistema, intv);
     adicionarEquipamentosIntervencao(sistema, intv);
-
 
     if (intv->numBombeiros == 0) {
         printf("\nAviso: A intervenção foi criada sem bombeiros associados.\n");
     }
-
     if (intv->numEquipamentos == 0) {
         printf("Aviso: A intervenção foi criada sem equipamentos associados.\n");
     }
 
-    /* Mensagem final */
     printf("\nIntervenção criada com sucesso.\n");
     printf("ID: %d | Bombeiros: %d | Equipamentos: %d\n",
-           intv->idIntervencao,
-           intv->numBombeiros,
-           intv->numEquipamentos);
-
+           intv->idIntervencao, intv->numBombeiros, intv->numEquipamentos);
     printf("Estado: %s\n", estadoIntervencaoParaString(intv->estado));
+
+    char detalhe[200];
+    snprintf(detalhe, sizeof(detalhe), "ID=%d;Ocorrencia=%d",
+             intv->idIntervencao, idOcorrencia);
+    registarLog("INFO", "INTERVENCOES", "CRIAR", detalhe);
 
     printf("\nPrima ENTER para voltar ao menu...");
     getchar();
-
-    char detalhe[200];
-    sprintf(detalhe, "ID=%d;Ocorrencia=%d", intv->idIntervencao, idOcorrencia);
-    registarLog("INFO", "INTERVENCOES", "CRIAR", detalhe);
 
     return intv->idIntervencao;
 }
 
 
-/*  ADICIONAR BOMBEIROS À INTERVENÇÃO                       */
-void adicionarBombeirosIntervencao(SistemaGestaoIncendios *sistema, Intervencao *intvExterna) {
+/* ========================================================================= */
+/*  ADICIONAR BOMBEIROS À INTERVENÇÃO                                       */
+/* ========================================================================= */
 
-    Intervencao *intv = NULL;
+void adicionarBombeirosIntervencao(SistemaGestaoIncendios *sistema,
+                                    Intervencao *intvExterna) {
+
+    Intervencao *intv  = NULL;
     int pedirId = (intvExterna == NULL);
 
     printf("|ADICIONAR BOMBEIROS À INTERVENÇÃO|\n\n");
 
     if (pedirId) {
         if (sistema->intervencoes.tamanho == 0) {
-            printf("Não existem intervenções registadas.\n\n");
+            printf("Não existem intervenções registadas.\n");
             printf("Prima ENTER para voltar ao menu...");
             getchar();
             return;
         }
 
-
         printf("INTERVENÇÕES EM PLANEAMENTO:\n");
-
         int encontrou = 0;
         for (int i = 0; i < sistema->intervencoes.tamanho; i++) {
             Intervencao *it = &sistema->intervencoes.dados[i];
             if (it->ativo && it->estado == EM_PLANEAMENTO) {
                 printf("ID %d | Ocorrência %d | Bombeiros: %d | Equipamentos: %d\n",
-                       it->idIntervencao,
-                       it->idOcorrencia,
-                       it->numBombeiros,
-                       it->numEquipamentos);
+                       it->idIntervencao, it->idOcorrencia,
+                       it->numBombeiros, it->numEquipamentos);
                 encontrou = 1;
             }
         }
@@ -218,12 +212,11 @@ void adicionarBombeirosIntervencao(SistemaGestaoIncendios *sistema, Intervencao 
             return;
         }
 
-
         int idIntervencao = getInt(1, 9999, "ID da intervenção");
         intv = procurarIntervencaoPorId(sistema, idIntervencao);
 
         if (intv == NULL || intv->ativo == 0 || intv->estado != EM_PLANEAMENTO) {
-            printf("\nIntervenção inválida ou inativa.\n\n");
+            printf("\nIntervenção inválida ou inativa.\n");
             printf("Prima ENTER para voltar ao menu...");
             getchar();
             return;
@@ -242,38 +235,24 @@ void adicionarBombeirosIntervencao(SistemaGestaoIncendios *sistema, Intervencao 
         return;
     }
 
-    /* Sugestão automática */
+    /* Sugestão automática baseada em histórico */
     Ocorrencia *oc = procurarOcorrenciaPorId(sistema, intv->idOcorrencia);
-
     if (oc != NULL) {
-
-        int sugestao = calcularSugestaoBombeiros(
-            sistema,
-            oc->tipo,
-            oc->prioridade
-        );
-
+        int sugestao = calcularSugestaoBombeiros(sistema, oc->tipo, oc->prioridade);
         if (sugestao > 0) {
-
-            int verSugestao = getInt(
-                0,
-                1,
-                "Deseja consultar a sugestão automática baseada em intervenções anteriores? (1=Sim, 0=Não)"
-            );
-
-            if (verSugestao) {
+            if (getInt(0, 1,
+                "Deseja consultar a sugestão automática baseada em intervenções anteriores? (1=Sim, 0=Não)")) {
                 printf("\nSugestão de apoio ao planeamento:\n");
                 printf("  Bombeiros recomendados: %d\n\n", sugestao);
             }
-
         } else {
             printf("\n(Sem dados históricos suficientes para gerar sugestão de bombeiros.)\n\n");
         }
     }
 
+    /* Listar bombeiros disponíveis */
     printf("BOMBEIROS DISPONÍVEIS:\n");
     int encontrou = 0;
-
     for (int i = 0; i < sistema->bombeiros.tamanho; i++) {
         Bombeiro *b = &sistema->bombeiros.dados[i];
         if (b->ativo && b->estado == DISPONIVEL) {
@@ -295,6 +274,21 @@ void adicionarBombeirosIntervencao(SistemaGestaoIncendios *sistema, Intervencao 
 
     int continuar = 1;
     while (continuar) {
+
+        /* Verificar se ainda existem bombeiros disponíveis */
+        int existeDisponivel = 0;
+        for (int i = 0; i < sistema->bombeiros.tamanho; i++) {
+            Bombeiro *bx = &sistema->bombeiros.dados[i];
+            if (bx->ativo && bx->estado == DISPONIVEL) {
+                existeDisponivel = 1;
+                break;
+            }
+        }
+
+        if (!existeDisponivel) {
+            printf("\nNão existem mais bombeiros disponíveis.\n\n");
+            break;
+        }
 
         int idBombeiro = getInt(1, 9999, "ID do bombeiro a adicionar");
         Bombeiro *b = procurarBombeiroPorId(sistema, idBombeiro);
@@ -319,7 +313,7 @@ void adicionarBombeirosIntervencao(SistemaGestaoIncendios *sistema, Intervencao 
 
         if (!expandirArrayBombeirosIntervencao(intv)) {
             printf("\nErro ao expandir lista de bombeiros.\n\n");
-            registarLog("ERROR", "INTERVENCOES", "ADD_BOMBEIRO", "Falha expandir array");
+            registarLog("ERROR", "INTERVENCOES", "ADD_BOMBEIRO", "Falha ao expandir array");
             break;
         }
 
@@ -330,11 +324,11 @@ void adicionarBombeirosIntervencao(SistemaGestaoIncendios *sistema, Intervencao 
         printf("Total de bombeiros: %d\n\n", intv->numBombeiros);
 
         char detalhe[200];
-        sprintf(detalhe, "Intervencao=%d;Bombeiro=%d", intv->idIntervencao, idBombeiro);
+        snprintf(detalhe, sizeof(detalhe), "Intervencao=%d;Bombeiro=%d",
+                 intv->idIntervencao, idBombeiro);
         registarLog("INFO", "INTERVENCOES", "ADD_BOMBEIRO", detalhe);
 
-        printf("Adicionar outro bombeiro? (1=Sim, 0=Não): ");
-        continuar = getInt(0, 1, "");
+        continuar = getInt(0, 1, "Adicionar outro bombeiro? (1=Sim, 0=Não)");
     }
 
     if (pedirId) {
@@ -343,10 +337,12 @@ void adicionarBombeirosIntervencao(SistemaGestaoIncendios *sistema, Intervencao 
     }
 }
 
+/* ========================================================================= */
+/*  ADICIONAR EQUIPAMENTOS À INTERVENÇÃO                                    */
+/* ========================================================================= */
 
-
-/*  ADICIONAR EQUIPAMENTOS À INTERVENÇÃO        */
-void adicionarEquipamentosIntervencao(SistemaGestaoIncendios *sistema, Intervencao *intvExterna) {
+void adicionarEquipamentosIntervencao(SistemaGestaoIncendios *sistema,
+                                       Intervencao *intvExterna) {
 
     Intervencao *intv = NULL;
     int pedirId = (intvExterna == NULL);
@@ -355,24 +351,20 @@ void adicionarEquipamentosIntervencao(SistemaGestaoIncendios *sistema, Intervenc
 
     if (pedirId) {
         if (sistema->intervencoes.tamanho == 0) {
-            printf("Não existem intervenções registadas.\n\n");
+            printf("Não existem intervenções registadas.\n");
             printf("Prima ENTER para voltar ao menu...");
             getchar();
             return;
         }
 
-
         printf("INTERVENÇÕES EM PLANEAMENTO:\n");
-
         int encontrou = 0;
         for (int i = 0; i < sistema->intervencoes.tamanho; i++) {
             Intervencao *it = &sistema->intervencoes.dados[i];
             if (it->ativo && it->estado == EM_PLANEAMENTO) {
                 printf("ID %d | Ocorrência %d | Bombeiros: %d | Equipamentos: %d\n",
-                       it->idIntervencao,
-                       it->idOcorrencia,
-                       it->numBombeiros,
-                       it->numEquipamentos);
+                       it->idIntervencao, it->idOcorrencia,
+                       it->numBombeiros, it->numEquipamentos);
                 encontrou = 1;
             }
         }
@@ -384,12 +376,12 @@ void adicionarEquipamentosIntervencao(SistemaGestaoIncendios *sistema, Intervenc
             return;
         }
 
-
         int idIntervencao = getInt(1, 9999, "ID da intervenção");
         intv = procurarIntervencaoPorId(sistema, idIntervencao);
 
-        if (intv == NULL || intv->ativo == 0) {
-            printf("\nIntervenção inválida ou inativa.\n\n");
+        /* Corrigido: verificar também o estado, consistente com adicionarBombeirosIntervencao */
+        if (intv == NULL || intv->ativo == 0 || intv->estado != EM_PLANEAMENTO) {
+            printf("\nIntervenção inválida ou inativa.\n");
             printf("Prima ENTER para voltar ao menu...");
             getchar();
             return;
@@ -410,44 +402,25 @@ void adicionarEquipamentosIntervencao(SistemaGestaoIncendios *sistema, Intervenc
 
     /* Sugestão automática de equipamentos */
     Ocorrencia *oc = procurarOcorrenciaPorId(sistema, intv->idOcorrencia);
-
     if (oc != NULL) {
-
-        int v, m, r;
-        calcularSugestaoEquipamentos(
-            sistema,
-            oc->tipo,
-            oc->prioridade,
-            &v,
-            &m,
-            &r
-        );
-
+        int v = 0, m = 0, r = 0;
+        calcularSugestaoEquipamentos(sistema, oc->tipo, oc->prioridade, &v, &m, &r);
         if (v >= 0) {
-
-            int verSugestao = getInt(
-                0,
-                1,
-                "Deseja consultar a sugestão automática de equipamentos baseada em intervenções anteriores? (1=Sim, 0=Não)"
-            );
-
-            if (verSugestao) {
+            if (getInt(0, 1,
+                "Deseja consultar a sugestão automática de equipamentos? (1=Sim, 0=Não)")) {
                 printf("\nSugestão de apoio ao planeamento:\n");
                 printf("  Veículos:     %d\n", v);
                 printf("  Mangueiras:   %d\n", m);
                 printf("  Respiradores: %d\n\n", r);
             }
-
         } else {
             printf("\n(Sem dados históricos suficientes para gerar sugestão de equipamentos.)\n\n");
         }
     }
 
-
-
+    /* Listar equipamentos disponíveis */
     printf("EQUIPAMENTOS DISPONÍVEIS:\n");
     int encontrou = 0;
-
     for (int i = 0; i < sistema->equipamentos.tamanho; i++) {
         Equipamento *e = &sistema->equipamentos.dados[i];
         if (e->ativo && e->estado == EQ_DISPONIVEL) {
@@ -469,6 +442,21 @@ void adicionarEquipamentosIntervencao(SistemaGestaoIncendios *sistema, Intervenc
 
     int continuar = 1;
     while (continuar) {
+
+        /* verificar se ainda existem equipamentos disponíveis */
+        int existeDisponivel = 0;
+        for (int i = 0; i < sistema->equipamentos.tamanho; i++) {
+            Equipamento *ex = &sistema->equipamentos.dados[i];
+            if (ex->ativo && ex->estado == EQ_DISPONIVEL) {
+                existeDisponivel = 1;
+                break;
+            }
+        }
+
+        if (!existeDisponivel) {
+            printf("\nNão existem mais equipamentos disponíveis.\n\n");
+            break;
+        }
 
         int idEq = getInt(1, 9999, "ID do equipamento a adicionar");
         Equipamento *eq = procurarEquipamentoPorId(sistema, idEq);
@@ -493,7 +481,7 @@ void adicionarEquipamentosIntervencao(SistemaGestaoIncendios *sistema, Intervenc
 
         if (!expandirArrayEquipamentosIntervencao(intv)) {
             printf("\nErro ao expandir lista de equipamentos.\n\n");
-            registarLog("ERROR", "INTERVENCOES", "ADD_EQUIPAMENTO", "Falha expandir array");
+            registarLog("ERROR", "INTERVENCOES", "ADD_EQUIPAMENTO", "Falha ao expandir array");
             break;
         }
 
@@ -504,7 +492,8 @@ void adicionarEquipamentosIntervencao(SistemaGestaoIncendios *sistema, Intervenc
         printf("Total de equipamentos: %d\n\n", intv->numEquipamentos);
 
         char detalhe[200];
-        sprintf(detalhe, "Intervencao=%d;Equipamento=%d", intv->idIntervencao, idEq);
+        snprintf(detalhe, sizeof(detalhe), "Intervencao=%d;Equipamento=%d",
+                 intv->idIntervencao, idEq);
         registarLog("INFO", "INTERVENCOES", "ADD_EQUIPAMENTO", detalhe);
 
         continuar = getInt(0, 1, "Adicionar outro equipamento? (1=Sim, 0=Não)");
@@ -517,11 +506,12 @@ void adicionarEquipamentosIntervencao(SistemaGestaoIncendios *sistema, Intervenc
 }
 
 
+/* ========================================================================= */
+/*  LISTAR INTERVENÇÕES                                                      */
+/* ========================================================================= */
 
-/*  LISTAR INTERVENÇÕES            */
 void listarIntervencoes(const SistemaGestaoIncendios *sistema) {
-
-    printf("|LISTA DE INTERVENÇÕES|\n");
+    printf("|LISTA DE INTERVENÇÕES|\n\n");
 
     if (sistema->intervencoes.tamanho == 0) {
         printf("Não existem intervenções registadas.\n");
@@ -530,37 +520,27 @@ void listarIntervencoes(const SistemaGestaoIncendios *sistema) {
         return;
     }
 
-    int contadorAtivas = 0;
+    int contadorAtivos = 0;
 
     for (int i = 0; i < sistema->intervencoes.tamanho; i++) {
-
         Intervencao *intv = &sistema->intervencoes.dados[i];
-        if (intv->ativo != 1)
-            continue;
+        if (intv->ativo != 1) continue;
 
-        contadorAtivas++;
-
+        contadorAtivos++;
         printf("----------------------------------------\n");
-        printf("Nrº: %d\n\n", contadorAtivas);
-
-
-        printf("ID: %d\n", intv->idIntervencao);
-
-        /* Estado da intervenção */
+        printf("Nrº: %d\n\n", contadorAtivos);
+        printf("ID: %d\n",    intv->idIntervencao);
         printf("Estado: %s\n", estadoIntervencaoParaString(intv->estado));
 
-        /* Ocorrência associada */
         Ocorrencia *o = procurarOcorrenciaPorId(sistema, intv->idOcorrencia);
         if (o != NULL) {
             printf("Ocorrência associada: ID %d - %s (%s)\n",
-                   o->idOcorrencia,
-                   o->localizacao,
+                   o->idOcorrencia, o->localizacao,
                    tipoOcorrenciaParaString(o->tipo));
         } else {
             printf("Ocorrência associada: não encontrada\n");
         }
 
-        /* Datas */
         printf("Início: %02d/%02d/%04d %02d:%02d\n",
                intv->inicio.dia, intv->inicio.mes, intv->inicio.ano,
                intv->inicio.hora, intv->inicio.minuto);
@@ -573,7 +553,6 @@ void listarIntervencoes(const SistemaGestaoIncendios *sistema) {
             printf("Fim:    (ainda não concluída)\n");
         }
 
-        /* Bombeiros */
         printf("\nBombeiros atribuídos (%d):\n", intv->numBombeiros);
         if (intv->numBombeiros == 0) {
             printf("  (nenhum bombeiro atribuído)\n");
@@ -581,14 +560,12 @@ void listarIntervencoes(const SistemaGestaoIncendios *sistema) {
             for (int j = 0; j < intv->numBombeiros; j++) {
                 Bombeiro *b = procurarBombeiroPorId(sistema, intv->idsBombeiros[j]);
                 if (b != NULL) {
-                    printf("  - %s (%s)\n",
-                           b->nome,
+                    printf("  - %s (%s)\n", b->nome,
                            especialidadeBombeiroParaString(b->especialidade));
                 }
             }
         }
 
-        /* Equipamentos */
         printf("\nEquipamentos atribuídos (%d):\n", intv->numEquipamentos);
         if (intv->numEquipamentos == 0) {
             printf("  (nenhum equipamento atribuído)\n");
@@ -596,8 +573,7 @@ void listarIntervencoes(const SistemaGestaoIncendios *sistema) {
             for (int j = 0; j < intv->numEquipamentos; j++) {
                 Equipamento *eq = procurarEquipamentoPorId(sistema, intv->idsEquipamentos[j]);
                 if (eq != NULL) {
-                    printf("  - %s (%s)\n",
-                           eq->designacao,
+                    printf("  - %s (%s)\n", eq->designacao,
                            tipoEquipamentoParaString(eq->tipo));
                 }
             }
@@ -606,24 +582,26 @@ void listarIntervencoes(const SistemaGestaoIncendios *sistema) {
         printf("\n");
     }
 
-    if (contadorAtivas == 0) {
+    if (contadorAtivos == 0) {
         printf("Todas as intervenções existentes estão inativas.\n");
     } else {
-        printf("Total de intervenções ativas: %d\n", contadorAtivas);
+        printf("Total de intervenções ativas: %d\n", contadorAtivos);
     }
 
-    //registarLog("INFO", "INTERVENCOES", "LISTAR", "Listagem de intervenções executada");
-    // (Comentado para evitar excesso de logs. Útil apenas em debugging.)
+    /* Log comentado para evitar logs excessivos em operações de leitura */
+    /* registarLog("INFO", "INTERVENCOES", "LISTAR", "Listagem executada"); */
 
     printf("\nPrima ENTER para voltar ao menu...");
     getchar();
 }
 
 
-/*  CONCLUIR INTERVENÇÃO            */
-void concluirIntervencao(SistemaGestaoIncendios *sistema) {
+/* ========================================================================= */
+/*  CONCLUIR INTERVENÇÃO                                                     */
+/* ========================================================================= */
 
-    printf("CONCLUIR INTERVENÇÃO:\n");
+void concluirIntervencao(SistemaGestaoIncendios *sistema) {
+    printf("CONCLUIR INTERVENÇÃO:\n\n");
 
     if (sistema->intervencoes.tamanho == 0) {
         printf("Não existem intervenções registadas.\n");
@@ -632,15 +610,11 @@ void concluirIntervencao(SistemaGestaoIncendios *sistema) {
         return;
     }
 
-    /* Listar intervenções ativas que ainda não estão concluídas */
-    printf("INTERVENÇÕES ATIVAS (NÃO CONCLUÍDAS):\n\n");
-
+    printf("INTERVENÇÕES EM EXECUÇÃO:\n\n");
     int encontrouAtivas = 0;
     for (int i = 0; i < sistema->intervencoes.tamanho; i++) {
-
         Intervencao *intv = &sistema->intervencoes.dados[i];
-
-        if (intv->ativo == 1 && intv->estado == EM_EXECUCAO){
+        if (intv->ativo == 1 && intv->estado == EM_EXECUCAO) {
             printf("ID %d | Estado: %s | Ocorrência ID: %d\n",
                    intv->idIntervencao,
                    estadoIntervencaoParaString(intv->estado),
@@ -650,7 +624,7 @@ void concluirIntervencao(SistemaGestaoIncendios *sistema) {
     }
 
     if (!encontrouAtivas) {
-        printf("Não há intervenções em estado ativo para concluir.\n");
+        printf("Não há intervenções em execução para concluir.\n");
         printf("Prima ENTER para voltar ao menu...");
         getchar();
         return;
@@ -682,23 +656,19 @@ void concluirIntervencao(SistemaGestaoIncendios *sistema) {
         return;
     }
 
-    /* só pode concluir se estiver EM_EXECUCAO */
     if (intv->estado != EM_EXECUCAO) {
         printf("\nErro: Apenas intervenções EM EXECUÇÃO podem ser concluídas.\n");
         printf("Estado atual: %s\n", estadoIntervencaoParaString(intv->estado));
         printf("Prima ENTER para voltar ao menu...");
         getchar();
-
         return;
     }
 
-    /* Pedir data/hora de fim */
     printf("\nREGISTAR FIM DA INTERVENÇÃO:\n");
     DataHora dataFim = lerDataHora("Data e hora de fim da intervenção");
 
-    /* Validar se fim > início */
     if (!validarDataHoraFimMaiorQueInicio(&intv->inicio, &dataFim)) {
-        printf("\nErro: A data/hora de fim deve ser posterior à data/hora de início.\n");
+        printf("\nErro: A data/hora de fim deve ser posterior à de início.\n");
         printf("Início registado: %02d/%02d/%04d %02d:%02d\n",
                intv->inicio.dia, intv->inicio.mes, intv->inicio.ano,
                intv->inicio.hora, intv->inicio.minuto);
@@ -707,55 +677,50 @@ void concluirIntervencao(SistemaGestaoIncendios *sistema) {
         return;
     }
 
-    /* Atualizar intervenção */
-    intv->fim = dataFim;
+    intv->fim        = dataFim;
     intv->fimDefinido = 1;
-    intv->estado = INT_CONCLUIDA;
+    intv->estado     = INT_CONCLUIDA;
 
     /* Libertar bombeiros */
     for (int i = 0; i < intv->numBombeiros; i++) {
         Bombeiro *b = procurarBombeiroPorId(sistema, intv->idsBombeiros[i]);
-        if (b != NULL && b->ativo == 1) {
-            b->estado = DISPONIVEL;
-        }
+        if (b != NULL && b->ativo == 1) b->estado = DISPONIVEL;
     }
 
     /* Libertar equipamentos */
     for (int i = 0; i < intv->numEquipamentos; i++) {
         Equipamento *eq = procurarEquipamentoPorId(sistema, intv->idsEquipamentos[i]);
-        if (eq != NULL && eq->ativo == 1) {
-            eq->estado = EQ_DISPONIVEL;
-        }
+        if (eq != NULL && eq->ativo == 1) eq->estado = EQ_DISPONIVEL;
     }
 
-    /* Atualizar ocorrência para CONCLUÍDA */
+    /* Atualizar ocorrência para CONCLUIDA */
     Ocorrencia *o = procurarOcorrenciaPorId(sistema, intv->idOcorrencia);
-    if (o != NULL && o->ativo == 1) {
-        o->estado = CONCLUIDA;
-    }
+    if (o != NULL && o->ativo == 1) o->estado = CONCLUIDA;
 
     printf("\nIntervenção concluída com sucesso.\n");
     printf("ID: %d\n", intv->idIntervencao);
     printf("Fim registado: %02d/%02d/%04d %02d:%02d\n",
            dataFim.dia, dataFim.mes, dataFim.ano,
            dataFim.hora, dataFim.minuto);
-    printf("Bombeiros libertados: %d\n", intv->numBombeiros);
+    printf("Bombeiros libertados: %d\n",    intv->numBombeiros);
     printf("Equipamentos libertados: %d\n", intv->numEquipamentos);
     printf("Ocorrência associada atualizada para CONCLUÍDA.\n");
 
+    char detalhe[200];
+    snprintf(detalhe, sizeof(detalhe), "Intervencao %d concluída", idIntervencao);
+    registarLog("INFO", "INTERVENCOES", "CONCLUIR", detalhe);
+
     printf("\nPrima ENTER para voltar ao menu...");
     getchar();
-
-    char detalhe[200];
-    sprintf(detalhe, "Intervenção %d concluída", idIntervencao);
-    registarLog("INFO", "INTERVENCOES", "CONCLUIR", detalhe);
 }
 
 
-/*  INATIVAR INTERVENÇÃO        */
-void inativarIntervencao(SistemaGestaoIncendios *sistema) {
+/* ========================================================================= */
+/*  INATIVAR INTERVENÇÃO                                                     */
+/* ========================================================================= */
 
-    printf("|INATIVAR INTERVENÇÃO|\n");
+void inativarIntervencao(SistemaGestaoIncendios *sistema) {
+    printf("|INATIVAR INTERVENÇÃO|\n\n");
 
     if (sistema->intervencoes.tamanho == 0) {
         printf("Não há intervenções registadas.\n");
@@ -764,9 +729,7 @@ void inativarIntervencao(SistemaGestaoIncendios *sistema) {
         return;
     }
 
-
     printf("INTERVENÇÕES ATIVAS (NÃO EM EXECUÇÃO):\n");
-
     int encontrou = 0;
     for (int i = 0; i < sistema->intervencoes.tamanho; i++) {
         Intervencao *it = &sistema->intervencoes.dados[i];
@@ -786,7 +749,6 @@ void inativarIntervencao(SistemaGestaoIncendios *sistema) {
         return;
     }
 
-
     int id = getInt(1, 9999, "ID da intervenção que pretende inativar");
 
     Intervencao *intv = procurarIntervencaoPorId(sistema, id);
@@ -805,42 +767,40 @@ void inativarIntervencao(SistemaGestaoIncendios *sistema) {
         return;
     }
 
-    /* Proibição: intervenção em execução não pode ser inativada */
     if (intv->estado == EM_EXECUCAO) {
         printf("\nA intervenção não pode ser inativada enquanto estiver em execução.\n");
         printf("Conclua a intervenção antes de a inativar.\n");
-        printf("Prima ENTER para voltar ao menu...");
-        getchar();
-
         registarLog("WARNING", "INTERVENCOES", "INATIVAR",
                     "Tentativa de inativar intervenção em execução bloqueada");
+        printf("Prima ENTER para voltar ao menu...");
+        getchar();
         return;
     }
 
-    /* Marcar como inativa (soft delete) */
     intv->ativo = 0;
 
     printf("\nIntervenção %d inativada com sucesso.\n", id);
-    printf("\nResumo:\n");
-    printf("  Bombeiros associados: %d\n", intv->numBombeiros);
+    printf("  Bombeiros associados: %d\n",    intv->numBombeiros);
     printf("  Equipamentos associados: %d\n", intv->numEquipamentos);
+
+    char detalhe[200];
+    snprintf(detalhe, sizeof(detalhe), "Intervencao %d inativada (estado=%s)",
+             id, estadoIntervencaoParaString(intv->estado));
+    registarLog("INFO", "INTERVENCOES", "INATIVAR", detalhe);
 
     printf("\nPrima ENTER para voltar ao menu...");
     getchar();
-
-    char detalhe[200];
-    sprintf(detalhe, "Intervenção %d inativada (estado=%s)",
-            id, estadoIntervencaoParaString(intv->estado));
-    registarLog("INFO", "INTERVENCOES", "INATIVAR", detalhe);
 
     tentarEliminarIntervencao(sistema, id);
 }
 
 
-/*  REATIVAR INTERVENÇÃO             */
-void reativarIntervencao(SistemaGestaoIncendios *sistema) {
+/* ========================================================================= */
+/*  REATIVAR INTERVENÇÃO                                                     */
+/* ========================================================================= */
 
-    printf("|REATIVAR INTERVENÇÃO|\n");
+void reativarIntervencao(SistemaGestaoIncendios *sistema) {
+    printf("|REATIVAR INTERVENÇÃO|\n\n");
 
     if (sistema->intervencoes.tamanho == 0) {
         printf("Não há intervenções registadas.\n");
@@ -849,9 +809,7 @@ void reativarIntervencao(SistemaGestaoIncendios *sistema) {
         return;
     }
 
-    /* Listar intervenções inativas */
     printf("INTERVENÇÕES INATIVAS:\n");
-
     int encontrou = 0;
     for (int i = 0; i < sistema->intervencoes.tamanho; i++) {
         Intervencao *intv = &sistema->intervencoes.dados[i];
@@ -891,34 +849,33 @@ void reativarIntervencao(SistemaGestaoIncendios *sistema) {
         return;
     }
 
-    /* Reativar */
     intv->ativo = 1;
 
     printf("\nIntervenção reativada com sucesso.\n");
-    printf("ID: %d\n", intv->idIntervencao);
+    printf("ID: %d\n",    intv->idIntervencao);
     printf("Estado: %s\n", estadoIntervencaoParaString(intv->estado));
     printf("Ocorrência associada: %d\n", intv->idOcorrencia);
-
     printf("\nDados preservados:\n");
-    printf("  Bombeiros associados: %d\n", intv->numBombeiros);
+    printf("  Bombeiros associados: %d\n",    intv->numBombeiros);
     printf("  Equipamentos associados: %d\n", intv->numEquipamentos);
-    printf("A intervenção foi restaurada exatamente como estava antes de ser inativada.\n");
+
+    char detalhe[200];
+    snprintf(detalhe, sizeof(detalhe),
+             "Intervencao %d reativada (bombeiros=%d, equipamentos=%d)",
+             id, intv->numBombeiros, intv->numEquipamentos);
+    registarLog("INFO", "INTERVENCOES", "REATIVAR", detalhe);
 
     printf("\nPrima ENTER para voltar ao menu...");
     getchar();
-
-    char detalhe[200];
-    sprintf(detalhe, "Intervenção %d reativada (bombeiros=%d, equipamentos=%d)",
-            id, intv->numBombeiros, intv->numEquipamentos);
-    registarLog("INFO", "INTERVENCOES", "REATIVAR", detalhe);
 }
 
 
+/* ========================================================================= */
+/*  INICIAR EXECUÇÃO DA INTERVENÇÃO                                         */
+/* ========================================================================= */
 
-/*  INICIAR EXECUÇÃO DA INTERVENÇÃO   */
 void iniciarExecucaoIntervencao(SistemaGestaoIncendios *sistema) {
-
-    printf("INICIAR EXECUÇÃO DA INTERVENÇÃO\n");
+    printf("INICIAR EXECUÇÃO DA INTERVENÇÃO\n\n");
 
     if (sistema->intervencoes.tamanho == 0) {
         printf("Não existem intervenções registadas.\n");
@@ -927,19 +884,14 @@ void iniciarExecucaoIntervencao(SistemaGestaoIncendios *sistema) {
         return;
     }
 
-    /* Listar intervenções em estado EM_PLANEAMENTO */
     printf("INTERVENÇÕES EM PLANEAMENTO:\n");
-
     int encontrou = 0;
     for (int i = 0; i < sistema->intervencoes.tamanho; i++) {
         Intervencao *intv = &sistema->intervencoes.dados[i];
-
         if (intv->ativo == 1 && intv->estado == EM_PLANEAMENTO) {
-            printf("ID %d | Ocorrencia: %d | Bombeiros: %d | Equipamentos: %d\n",
-                   intv->idIntervencao,
-                   intv->idOcorrencia,
-                   intv->numBombeiros,
-                   intv->numEquipamentos);
+            printf("ID %d | Ocorrência: %d | Bombeiros: %d | Equipamentos: %d\n",
+                   intv->idIntervencao, intv->idOcorrencia,
+                   intv->numBombeiros, intv->numEquipamentos);
             encontrou = 1;
         }
     }
@@ -971,14 +923,13 @@ void iniciarExecucaoIntervencao(SistemaGestaoIncendios *sistema) {
     }
 
     if (intv->estado != EM_PLANEAMENTO) {
-        printf("\nApenas intervenções em estado EM_PLANEAMENTO podem ser colocadas em execução.\n");
+        printf("\nApenas intervenções EM_PLANEAMENTO podem ser colocadas em execução.\n");
         printf("Estado atual: %s\n", estadoIntervencaoParaString(intv->estado));
         printf("Prima ENTER para voltar ao menu...");
         getchar();
         return;
     }
 
-    /* Validar recurso mínimo obrigatório */
     if (intv->numBombeiros == 0) {
         printf("\nA intervenção não possui bombeiros associados.\n");
         printf("Adicione bombeiros antes de iniciar a execução.\n");
@@ -987,62 +938,52 @@ void iniciarExecucaoIntervencao(SistemaGestaoIncendios *sistema) {
         return;
     }
 
-    /* Verificar se todos os bombeiros ainda estão disponíveis */
+    /* Verificar disponibilidade de todos os bombeiros */
     for (int i = 0; i < intv->numBombeiros; i++) {
         Bombeiro *b = procurarBombeiroPorId(sistema, intv->idsBombeiros[i]);
-
         if (b == NULL || b->ativo == 0) {
             printf("\nErro: Bombeiro associado não existe ou está inativo.\n");
-            printf("Execução da intervenção cancelada.\n");
+            printf("Execução cancelada.\n");
             printf("Prima ENTER para voltar ao menu...");
             getchar();
             return;
         }
-
         if (b->estado != DISPONIVEL) {
-            printf("\nErro: O bombeiro '%s' já não se encontra disponível.\n", b->nome);
-            printf("Estado atual: %s\n", estadoBombeiroParaString(b->estado));
-            printf("Não é possível iniciar a execução desta intervenção.\n");
+            printf("\nErro: O bombeiro '%s' já não está disponível (estado: %s).\n",
+                   b->nome, estadoBombeiroParaString(b->estado));
+            printf("Execução cancelada.\n");
             printf("Prima ENTER para voltar ao menu...");
             getchar();
             return;
         }
     }
 
-    /* Verificar se todos os equipamentos ainda estão disponíveis */
+    /* Verificar disponibilidade de todos os equipamentos */
     for (int i = 0; i < intv->numEquipamentos; i++) {
         Equipamento *eq = procurarEquipamentoPorId(sistema, intv->idsEquipamentos[i]);
-
         if (eq == NULL || eq->ativo == 0) {
             printf("\nErro: Equipamento associado não existe ou está inativo.\n");
-            printf("Execução da intervenção cancelada.\n");
+            printf("Execução cancelada.\n");
             printf("Prima ENTER para voltar ao menu...");
             getchar();
             return;
         }
-
         if (eq->estado != EQ_DISPONIVEL) {
-            printf("\nErro: O equipamento '%s' já não se encontra disponível.\n", eq->designacao);
-            printf("Estado atual: %s\n", estadoEquipamentoParaString(eq->estado));
-            printf("Não é possível iniciar a execução desta intervenção.\n");
+            printf("\nErro: O equipamento '%s' já não está disponível (estado: %s).\n",
+                   eq->designacao, estadoEquipamentoParaString(eq->estado));
+            printf("Execução cancelada.\n");
             printf("Prima ENTER para voltar ao menu...");
             getchar();
             return;
         }
     }
-
 
     /* Transição de estado */
     intv->estado = EM_EXECUCAO;
 
-    /* Atualizar estado da ocorrência associada */
     Ocorrencia *o = procurarOcorrenciaPorId(sistema, intv->idOcorrencia);
-    if (o != NULL && o->ativo == 1) {
-        o->estado = EM_INTERVENCAO;
-    }
+    if (o != NULL && o->ativo == 1) o->estado = EM_INTERVENCAO;
 
-
-    /* Alterar estados dos bombeiros associados */
     int bombeirosAtivados = 0;
     for (int i = 0; i < intv->numBombeiros; i++) {
         Bombeiro *b = procurarBombeiroPorId(sistema, intv->idsBombeiros[i]);
@@ -1052,7 +993,6 @@ void iniciarExecucaoIntervencao(SistemaGestaoIncendios *sistema) {
         }
     }
 
-    /* Alterar estados dos equipamentos associados */
     int equipamentosAtivados = 0;
     for (int i = 0; i < intv->numEquipamentos; i++) {
         Equipamento *eq = procurarEquipamentoPorId(sistema, intv->idsEquipamentos[i]);
@@ -1063,34 +1003,45 @@ void iniciarExecucaoIntervencao(SistemaGestaoIncendios *sistema) {
     }
 
     printf("\nIntervenção iniciada com sucesso.\n");
-    printf("ID: %d\n", intv->idIntervencao);
+    printf("ID: %d\n",    intv->idIntervencao);
     printf("Estado: %s\n", estadoIntervencaoParaString(intv->estado));
     printf("\nRecursos mobilizados:\n");
     printf("  Bombeiros em intervenção: %d\n", bombeirosAtivados);
-    printf("  Equipamentos em uso: %d\n", equipamentosAtivados);
+    printf("  Equipamentos em uso: %d\n",       equipamentosAtivados);
+
+    char detalhe[200];
+    snprintf(detalhe, sizeof(detalhe),
+             "Intervencao %d iniciada (bombeiros=%d, equipamentos=%d)",
+             id, bombeirosAtivados, equipamentosAtivados);
+    registarLog("INFO", "INTERVENCOES", "INICIAR_EXECUCAO", detalhe);
 
     printf("\nPrima ENTER para voltar ao menu...");
     getchar();
-
-    char detalhe[200];
-    sprintf(detalhe, "Intervencao %d iniciada (bombeiros=%d, equipamentos=%d)",
-            id, bombeirosAtivados, equipamentosAtivados);
-    registarLog("INFO", "INTERVENCOES", "INICIAR_EXECUCAO", detalhe);
 }
+
+
+/* ========================================================================= */
+/*  TENTAR ELIMINAR INTERVENÇÃO                                              */
+/* ========================================================================= */
 
 void tentarEliminarIntervencao(SistemaGestaoIncendios *sistema, int idIntervencao) {
 
     Intervencao *intv = procurarIntervencaoPorId(sistema, idIntervencao);
-    if (!intv || intv->ativo != 0) return;  // só elimina se estiver inativa
 
-    if (!intv || intv->estado != INT_CONCLUIDA) return;
+    /* Só elimina se estiver inativa e concluída */
+    if (intv == NULL || intv->ativo != 0)       return;
+    if (intv->estado != INT_CONCLUIDA)           return;
 
     for (int i = 0; i < sistema->intervencoes.tamanho; i++) {
         if (sistema->intervencoes.dados[i].idIntervencao == idIntervencao) {
 
+            /* Libertar arrays internos antes de eliminar */
             free(sistema->intervencoes.dados[i].idsBombeiros);
             free(sistema->intervencoes.dados[i].idsEquipamentos);
 
+            /* Swap and pop: se for o único elemento (tamanho == 1), a cópia
+             * é do próprio elemento por cima de si mesmo — inócua, porque
+             * o tamanho-- torna-o imediatamente inacessível. */
             sistema->intervencoes.dados[i] =
                 sistema->intervencoes.dados[sistema->intervencoes.tamanho - 1];
             sistema->intervencoes.tamanho--;
@@ -1098,5 +1049,3 @@ void tentarEliminarIntervencao(SistemaGestaoIncendios *sistema, int idIntervenca
         }
     }
 }
-
-

@@ -3,48 +3,47 @@
 #include "ocorrencias.h"
 #include "equipamentos.h"
 #include "bombeiros.h"
-#include <stdio.h>
-
 #include "utils.h"
+#include <stdio.h>
 
 /**
  * @file sugestoes.c
- * @brief Mecanismo auxiliar de apoio à decisão.
+ * @brief Mecanismo auxiliar de apoio à decisão no planeamento de intervenções.
  *
  * Este módulo fornece cálculos estatísticos baseados em intervenções
- * concluídas anteriormente, com o mesmo tipo e prioridade de ocorrência.
+ * concluídas anteriormente com o mesmo tipo e prioridade de ocorrência.
  *
  * As sugestões:
- *  - Não alteram automaticamente o sistema
- *  - Não constituem uma funcionalidade independente
+ *  - Não alteram automaticamente o estado do sistema
+ *  - Não constituem uma funcionalidade independente (são chamadas por intervencoes.c)
  *  - Servem apenas para apoiar o utilizador durante o planeamento
  *
- * É exigido um mínimo de 3 intervenções concluídas para garantir
- * resultados minimamente fiáveis.
+ * É exigido um mínimo de 3 intervenções concluídas semelhantes para
+ * garantir resultados minimamente fiáveis. Abaixo desse limiar, as funções
+ * retornam -1 para indicar dados insuficientes.
  */
 
 
-/**
- * @brief Calcula a média de bombeiros usados em intervenções semelhantes.
- *
- * @return Média de bombeiros ou -1 se não houver dados suficientes
- */
+/* ========================================================================= */
+/*  SUGESTÃO DE BOMBEIROS                                                    */
+/* ========================================================================= */
+
 int calcularSugestaoBombeiros(const SistemaGestaoIncendios *sistema,
-                              TipoOcorrencia tipo,
-                              PrioridadeOcorrencia prioridade)
+                               TipoOcorrencia tipo,
+                               PrioridadeOcorrencia prioridade)
 {
     int total = 0;
-    int n = 0;
+    int n     = 0;
 
     for (int i = 0; i < sistema->intervencoes.tamanho; i++) {
 
-        Intervencao *intv = &sistema->intervencoes.dados[i];
+        const Intervencao *intv = &sistema->intervencoes.dados[i];
 
         /* Apenas intervenções concluídas e ativas */
         if (intv->ativo == 0 || intv->estado != INT_CONCLUIDA)
             continue;
 
-        Ocorrencia *o = procurarOcorrenciaPorId(sistema, intv->idOcorrencia);
+        const Ocorrencia *o = procurarOcorrenciaPorId(sistema, intv->idOcorrencia);
         if (o == NULL)
             continue;
 
@@ -54,7 +53,7 @@ int calcularSugestaoBombeiros(const SistemaGestaoIncendios *sistema,
         }
     }
 
-    /* Dados insuficientes */
+    /* Dados insuficientes — limiar mínimo de 3 intervenções */
     if (n < 3)
         return -1;
 
@@ -62,43 +61,44 @@ int calcularSugestaoBombeiros(const SistemaGestaoIncendios *sistema,
 }
 
 
+/* ========================================================================= */
+/*  SUGESTÃO DE EQUIPAMENTOS                                                 */
+/* ========================================================================= */
 
 void calcularSugestaoEquipamentos(const SistemaGestaoIncendios *sistema,
-                                 TipoOcorrencia tipo,
-                                 PrioridadeOcorrencia prioridade,
-                                 int *mediaVeiculos,
-                                 int *mediaMangueiras,
-                                 int *mediaRespiradores)
+                                   TipoOcorrencia tipo,
+                                   PrioridadeOcorrencia prioridade,
+                                   int *mediaVeiculos,
+                                   int *mediaMangueiras,
+                                   int *mediaRespiradores)
 {
     int totalVeic = 0;
     int totalMang = 0;
     int totalResp = 0;
-    int n = 0;  // número de intervenções consideradas
+    int n         = 0;
 
     for (int i = 0; i < sistema->intervencoes.tamanho; i++) {
 
-        Intervencao *intv = &sistema->intervencoes.dados[i];
+        const Intervencao *intv = &sistema->intervencoes.dados[i];
 
         /* Apenas intervenções concluídas e ativas */
         if (!intv->ativo || intv->estado != INT_CONCLUIDA)
             continue;
 
-        /* Obter ocorrência associada */
-        Ocorrencia *o = procurarOcorrenciaPorId(sistema, intv->idOcorrencia);
-        if (!o)
+        const Ocorrencia *o = procurarOcorrenciaPorId(sistema, intv->idOcorrencia);
+        if (o == NULL)
             continue;
 
-        /* Apenas intervenções com o mesmo tipo e prioridade */
+        /* Apenas intervenções com o mesmo tipo e prioridade de ocorrência */
         if (o->tipo == tipo && o->prioridade == prioridade) {
 
-            /* Somar TODOS os equipamentos usados nesta intervenção */
             for (int j = 0; j < intv->numEquipamentos; j++) {
 
-                Equipamento *eq =
+                const Equipamento *eq =
                     procurarEquipamentoPorId(sistema, intv->idsEquipamentos[j]);
 
-                /* Se o equipamento já não existir ignora */
-                if (!eq)
+                /* Se o equipamento já foi eliminado fisicamente, ignorar */
+                if (eq == NULL)
                     continue;
 
                 switch (eq->tipo) {
@@ -112,10 +112,10 @@ void calcularSugestaoEquipamentos(const SistemaGestaoIncendios *sistema,
         }
     }
 
-    /* Necessário mínimo de 3 intervenções */
+    /* Dados insuficientes — limiar mínimo de 3 intervenções */
     if (n < 3) {
-        *mediaVeiculos = -1;
-        *mediaMangueiras = -1;
+        *mediaVeiculos     = -1;
+        *mediaMangueiras   = -1;
         *mediaRespiradores = -1;
         return;
     }
@@ -125,4 +125,3 @@ void calcularSugestaoEquipamentos(const SistemaGestaoIncendios *sistema,
     *mediaMangueiras   = totalMang / n;
     *mediaRespiradores = totalResp / n;
 }
-

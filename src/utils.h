@@ -1,282 +1,200 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include "modelos.h"
-
 /**
  * @file utils.h
- * @brief Funções auxiliares: input, validações, listas dinâmicas, datas,
- *        conversões para string e menus de escolha.
+ * @brief Funções utilitárias transversais ao Sistema de Gestão de Incêndios.
+ *
+ * Este módulo centraliza operações de uso geral:
+ *  - Leitura e validação de input do utilizador
+ *  - Inicialização e libertação das listas dinâmicas
+ *  - Cálculos e validações de datas
+ *  - Conversões enum → string (implementadas aqui, declaradas nos módulos)
+ *  - Menus interativos de escolha (implementados aqui, declarados nos módulos)
+ *
+ * @note As funções de conversão para string e os menus interativos estão
+ *       declarados nos módulos de entidade respetivos (bombeiros.h,
+ *       equipamentos.h, etc.) mas implementados neste ficheiro para
+ *       centralizar as implementações e evitar duplicação de código.
+ *
+ * @author José (8220942)
+ * @date 2024
+ * @version 2.0
  */
 
+#include "modelos.h"
+
+
+/* ========================================================================= */
+/*  INPUT E VALIDAÇÃO                                                        */
+/* ========================================================================= */
 
 /**
- * @brief Lê um inteiro do stdin, garantindo que está dentro de um intervalo.
+ * @brief Lê um inteiro do stdin garantindo que está dentro de um intervalo.
  *
  * Repete a leitura até o utilizador fornecer um valor válido.
+ * Descarta qualquer input inválido restante no buffer.
  *
- * @param min Valor mínimo permitido (inclusivo).
- * @param max Valor máximo permitido (inclusivo).
- * @param msg Mensagem a apresentar ao utilizador.
- * @return Valor inteiro lido e validado.
+ * @param min Valor mínimo permitido (inclusivo)
+ * @param max Valor máximo permitido (inclusivo)
+ * @param msg Mensagem a apresentar ao utilizador
+ * @return Valor inteiro lido e validado
  */
 int getInt(int min, int max, const char *msg);
 
 /**
  * @brief Lê uma string do stdin com tamanho máximo definido.
  *
- * Remove o '\n' final, se existir.
+ * Remove o '\n' final se existir. Garante terminação nula.
  *
- * @param destino Buffer de destino onde será armazenada a string.
- * @param tamanhoMax Tamanho máximo do buffer.
- * @param msg Mensagem a apresentar ao utilizador.
+ * @param destino    Buffer de destino onde a string será armazenada
+ * @param tamanhoMax Tamanho máximo do buffer (incluindo '\0')
+ * @param msg        Mensagem a apresentar ao utilizador
  */
 void lerString(char *destino, int tamanhoMax, const char *msg);
 
 /**
- * @brief Lê uma data e hora completas do utilizador.
+ * @brief Lê uma data e hora completas do utilizador com validação.
  *
- * Garante que a data é válida (dia/mês/ano).
+ * Solicita dia, mês, ano, hora e minuto separadamente.
+ * Repete a leitura de campos inválidos.
  *
- * @param msg Mensagem a apresentar antes da leitura.
- * @return Estrutura DataHora preenchida.
+ * @param msg Mensagem a apresentar antes da leitura
+ * @return Estrutura DataHora preenchida e validada
  */
 DataHora lerDataHora(const char *msg);
 
 
+/* ========================================================================= */
+/*  VALIDAÇÃO DE DATAS                                                       */
+/* ========================================================================= */
+
 /**
- * @brief Valida se uma data (dia, mês, ano) é válida.
+ * @brief Valida se uma combinação de dia, mês e ano é calendáricamente correta.
  *
- * @param dia Dia do mês.
- * @param mes Mês (1-12).
- * @param ano Ano (>= 2000).
- * @return 1 se a data for válida, 0 caso contrário.
+ * @param dia Dia do mês
+ * @param mes Mês (1–12)
+ * @param ano Ano (>= 2000)
+ * @return 1 se a data for válida, 0 caso contrário
  */
 int validarData(int dia, int mes, int ano);
 
 /**
- * @brief Verifica se um determinado ano é bissexto.
+ * @brief Verifica se um ano é bissexto.
  *
- * @param ano Ano a testar.
- * @return 1 se for bissexto, 0 caso contrário.
+ * @param ano Ano a testar
+ * @return 1 se for bissexto, 0 caso contrário
  */
 int anoBissexto(int ano);
 
-
-
 /**
- * @brief Inicializa a lista de ocorrências.
+ * @brief Calcula a diferença em minutos entre duas datas.
  *
+ * Converte ambas as datas para minutos absolutos para garantir
+ * precisão em cálculos que atravessam meses e anos.
  *
- * @param lista Ponteiro para a lista a inicializar.
- */
-void inicializarListaOcorrencias(ListaOcorrencias *lista);
-
-/**
- * @brief Inicializa a lista de intervenções.
- *
- * @param lista Ponteiro para a lista a inicializar.
- */
-void inicializarListaIntervencoes(ListaIntervencoes *lista);
-
-/**
- * @brief Inicializa a lista de bombeiros.
- *
- * @param lista Ponteiro para a lista a inicializar.
- */
-void inicializarListaBombeiros(ListaBombeiros *lista);
-
-/**
- * @brief Inicializa a lista de equipamentos.
- *
- * @param lista Ponteiro para a lista a inicializar.
- */
-void inicializarListaEquipamentos(ListaEquipamentos *lista);
-
-/**
- * @brief Liberta a memória associada à lista de ocorrências.
- *
- * @param lista Ponteiro para a lista a libertar.
- */
-void libertarListaOcorrencias(ListaOcorrencias *lista);
-
-/**
- * @brief Liberta a memória associada à lista de intervenções,
- * incluindo os arrays internos de bombeiros/equipamentos.
- *
- * @param lista Ponteiro para a lista a libertar.
- */
-void libertarListaIntervencoes(ListaIntervencoes *lista);
-
-/**
- * @brief Liberta a memória associada à lista de bombeiros.
- *
- * @param lista Ponteiro para a lista a libertar.
- */
-void libertarListaBombeiros(ListaBombeiros *lista);
-
-/**
- * @brief Liberta a memória associada à lista de equipamentos.
- *
- * @param lista Ponteiro para a lista a libertar.
- */
-void libertarListaEquipamentos(ListaEquipamentos *lista);
-
-/**
- * @brief Garante espaço suficiente na lista de ocorrências,
- *        expandindo a capacidade se necessário.
- *
- * @param lista Ponteiro para a lista.
- * @return 1 em caso de sucesso, 0 se a realocação falhar.
- */
-int expandirListaOcorrenciasSeNecessario(ListaOcorrencias *lista);
-
-/**
- * @brief Expande a lista de bombeiros se a capacidade atual estiver esgotada.
- *
- * @param lista Ponteiro para a lista.
- * @return 1 em caso de sucesso, 0 em caso de erro.
- */
-int expandirListaBombeirosSeNecessario(ListaBombeiros *lista);
-
-/**
- * @brief Expande a lista de equipamentos se necessário.
- *
- * @param lista Ponteiro para a lista.
- * @return 1 em caso de sucesso, 0 em caso de erro.
- */
-int expandirListaEquipamentosSeNecessario(ListaEquipamentos *lista);
-
-/**
- * @brief Expande a lista de intervenções se necessário.
- *
- * @param lista Ponteiro para a lista.
- * @return 1 em caso de sucesso, 0 em caso de erro.
- */
-int expandirListaIntervencoesSeNecessario(ListaIntervencoes *lista);
-
-/**
- * @brief Expande o array de IDs de bombeiros associado a uma intervenção.
- *
- * @param intervencao Ponteiro para a intervenção.
- * @return 1 em caso de sucesso, 0 em caso de erro.
- */
-int expandirArrayBombeirosIntervencao(Intervencao *intervencao);
-
-/**
- * @brief Expande o array de IDs de equipamentos associado a uma intervenção.
- *
- * @param intervencao Ponteiro para a intervenção.
- * @return 1 em caso de sucesso, 0 em caso de erro.
- */
-int expandirArrayEquipamentosIntervencao(Intervencao *intervencao);
-
-
-
-/**
- * @brief Calcula a diferença em minutos entre duas datas, com maior precisão.
- *
- * Converte ambas as datas para um número absoluto de minutos desde ano 0.
- *
- * @param d1 Primeira data/hora.
- * @param d2 Segunda data/hora.
- * @return Diferença em minutos (d2 - d1).
+ * @param d1 Data/hora inicial
+ * @param d2 Data/hora final
+ * @return Diferença em minutos (d2 - d1); negativo se d2 < d1
  */
 int minutosEntre(DataHora d1, DataHora d2);
 
 /**
- * @brief Verifica se uma data/hora de fim é posterior à de início.
+ * @brief Verifica se uma data/hora de fim é estritamente posterior à de início.
  *
- * @param inicio Ponteiro para a data/hora inicial.
- * @param fim Ponteiro para a data/hora final.
- * @return 1 se fim > inicio, 0 caso contrário.
+ * @param inicio Ponteiro para a data/hora inicial
+ * @param fim    Ponteiro para a data/hora final
+ * @return 1 se fim > inicio, 0 caso contrário
  */
 int validarDataHoraFimMaiorQueInicio(const DataHora *inicio, const DataHora *fim);
 
 
+/* ========================================================================= */
+/*  INICIALIZAÇÃO DE LISTAS DINÂMICAS                                       */
+/* ========================================================================= */
 
 /**
- * @brief Converte um EstadoOcorrencia numa string legível.
- */
-const char* estadoOcorrenciaParaString(EstadoOcorrencia estado);
-
-/**
- * @brief Converte um EstadoIntervencao numa string legível.
- */
-const char* estadoIntervencaoParaString(EstadoIntervencao estado);
-
-/**
- * @brief Converte uma EspecialidadeBombeiro em string legível.
- */
-const char* especialidadeBombeiroParaString(EspecialidadeBombeiro esp);
-
-/**
- * @brief Converte um EstadoOperacionalBombeiro em string legível.
- */
-const char* estadoBombeiroParaString(EstadoOperacionalBombeiro est);
-
-/**
- * @brief Converte um TipoEquipamento em string legível.
- */
-const char* tipoEquipamentoParaString(TipoEquipamento tipo);
-
-/**
- * @brief Converte um EstadoEquipamento em string legível.
- */
-const char* estadoEquipamentoParaString(EstadoEquipamento estado);
-
-/**
- * @brief Converte um TipoOcorrencia em string legível.
- */
-const char* tipoOcorrenciaParaString(TipoOcorrencia tipo);
-
-/**
- * @brief Converte uma PrioridadeOcorrencia em string legível.
- */
-const char* prioridadeParaString(PrioridadeOcorrencia prio);
-
-
-
-/**
- * @brief Mostra um menu e permite escolher um tipo de ocorrência.
+ * @brief Inicializa a lista de ocorrências com capacidade inicial.
  *
- * @return Tipo de ocorrência escolhido.
+ * @param lista Ponteiro para a lista a inicializar
  */
-TipoOcorrencia escolherTipoOcorrencia(void);
+void inicializarListaOcorrencias(ListaOcorrencias *lista);
 
 /**
- * @brief Mostra um menu e permite escolher uma prioridade de ocorrência.
+ * @brief Inicializa a lista de intervenções com capacidade inicial.
  *
- * @return Prioridade escolhida.
+ * @param lista Ponteiro para a lista a inicializar
  */
-PrioridadeOcorrencia escolherPrioridadeOcorrencia(void);
+void inicializarListaIntervencoes(ListaIntervencoes *lista);
 
 /**
- * @brief Mostra um menu e permite escolher a especialidade de um bombeiro.
+ * @brief Inicializa a lista de bombeiros com capacidade inicial.
  *
- * @return Especialidade escolhida.
+ * @param lista Ponteiro para a lista a inicializar
  */
-EspecialidadeBombeiro escolherEspecialidadeBombeiro(void);
+void inicializarListaBombeiros(ListaBombeiros *lista);
 
 /**
- * @brief Mostra um menu e permite escolher o estado operacional de um bombeiro.
+ * @brief Inicializa a lista de equipamentos com capacidade inicial.
  *
- * @return Estado escolhido.
+ * @param lista Ponteiro para a lista a inicializar
  */
-EstadoOperacionalBombeiro escolherEstadoBombeiro(void);
+void inicializarListaEquipamentos(ListaEquipamentos *lista);
+
+
+/* ========================================================================= */
+/*  LIBERTAÇÃO DE LISTAS DINÂMICAS                                          */
+/* ========================================================================= */
 
 /**
- * @brief Mostra um menu e permite escolher o tipo de equipamento.
+ * @brief Liberta a memória alocada pela lista de ocorrências.
  *
- * @return Tipo escolhido.
+ * @param lista Ponteiro para a lista a libertar
  */
-TipoEquipamento escolherTipoEquipamento(void);
+void libertarListaOcorrencias(ListaOcorrencias *lista);
 
 /**
- * @brief Mostra um menu e permite escolher o estado de um equipamento.
+ * @brief Liberta a memória alocada pela lista de intervenções.
  *
- * @return Estado escolhido.
+ * Liberta também os arrays internos de cada intervenção
+ * (idsBombeiros e idsEquipamentos).
+ *
+ * @param lista Ponteiro para a lista a libertar
+ *
+ * @warning Deve ser chamada antes de libertar o sistema para evitar
+ *          fugas de memória nos arrays internos das intervenções
  */
-EstadoEquipamento escolherEstadoEquipamento(void);
+void libertarListaIntervencoes(ListaIntervencoes *lista);
+
+/**
+ * @brief Liberta a memória alocada pela lista de bombeiros.
+ *
+ * @param lista Ponteiro para a lista a libertar
+ */
+void libertarListaBombeiros(ListaBombeiros *lista);
+
+/**
+ * @brief Liberta a memória alocada pela lista de equipamentos.
+ *
+ * @param lista Ponteiro para a lista a libertar
+ */
+void libertarListaEquipamentos(ListaEquipamentos *lista);
+
+
+/* ========================================================================= */
+/*  CONVERSÃO ENUM → STRING (alias para uso cross-módulo)                  */
+/* ========================================================================= */
+
+/**
+ * @brief Alias de prioridadeOcorrenciaParaString() para uso em outros módulos.
+ *
+ * Declarada aqui para que módulos como intervencoes.c possam usar
+ * prioridadeParaString() sem incluir ocorrencias.h diretamente.
+ *
+ * @param prio Prioridade a converter
+ * @return String descritiva da prioridade
+ */
+const char *prioridadeParaString(PrioridadeOcorrencia prio);
+
 
 #endif /* UTILS_H */
