@@ -34,7 +34,7 @@ O projeto foi desenvolvido seguindo boas práticas de engenharia de software, no
 
 ⚠️ Este projeto foi originalmente desenvolvido durante o primeiro ano da licenciatura.
 
-Atualmente está a ser melhorado e refatorado gradualmente, à medida que aplico e aprofundo boas práticas de engenharia de software.
+Atualmente está a ser melhorado gradualmente, à medida que aplico e aprofundo boas práticas de engenharia de software.
 
 ---
 ## ✅ Funcionalidades
