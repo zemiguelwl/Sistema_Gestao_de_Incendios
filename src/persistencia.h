@@ -24,10 +24,10 @@
 /*  NOMES DOS FICHEIROS DE PERSISTÊNCIA                                     */
 /* ========================================================================= */
 
-#define FICHEIRO_OCORRENCIAS   "ocorrencias.bin"   /**< Ficheiro de ocorrências  */
-#define FICHEIRO_BOMBEIROS     "bombeiros.bin"      /**< Ficheiro de bombeiros    */
-#define FICHEIRO_EQUIPAMENTOS  "equipamentos.bin"   /**< Ficheiro de equipamentos */
-#define FICHEIRO_INTERVENCOES  "intervencoes.bin"   /**< Ficheiro de intervenções */
+#define FICHEIRO_OCORRENCIAS   "data/ocorrencias.bin"   /**< Ficheiro de ocorrências  */
+#define FICHEIRO_BOMBEIROS     "data/bombeiros.bin"     /**< Ficheiro de bombeiros    */
+#define FICHEIRO_EQUIPAMENTOS  "data/equipamentos.bin"  /**< Ficheiro de equipamentos */
+#define FICHEIRO_INTERVENCOES  "data/intervencoes.bin"  /**< Ficheiro de intervenções */
 
 
 /* ========================================================================= */

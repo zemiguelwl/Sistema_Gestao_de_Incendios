@@ -16,7 +16,7 @@
  *       substituir por localtime_r() (POSIX) ou localtime_s() (Windows).
  */
 
-#define FICHEIRO_LOGS "logs.txt"
+#define FICHEIRO_LOGS "logs/logs.txt"
 
 static FILE *ficheiroLogs = NULL;
 
@@ -33,13 +33,19 @@ void inicializarLogs(void) {
     struct tm *tempoLocal = localtime(&agora);
 
     fprintf(ficheiroLogs, "\n=== SESSÃO INICIADA ===\n");
-    fprintf(ficheiroLogs, "%04d-%02d-%02d %02d:%02d:%02d;INFO;SISTEMA;INICIAR;Nova sessão iniciada\n",
-            tempoLocal->tm_year + 1900,
-            tempoLocal->tm_mon  + 1,
-            tempoLocal->tm_mday,
-            tempoLocal->tm_hour,
-            tempoLocal->tm_min,
-            tempoLocal->tm_sec);
+
+    if (tempoLocal != NULL) {
+        fprintf(ficheiroLogs,
+                "%04d-%02d-%02d %02d:%02d:%02d;INFO;SISTEMA;INICIAR;Nova sessão iniciada\n",
+                tempoLocal->tm_year + 1900,
+                tempoLocal->tm_mon  + 1,
+                tempoLocal->tm_mday,
+                tempoLocal->tm_hour,
+                tempoLocal->tm_min,
+                tempoLocal->tm_sec);
+    } else {
+        fprintf(ficheiroLogs, "????-??-?? ??:??:??;INFO;SISTEMA;INICIAR;Nova sessão iniciada\n");
+    }
 
     fflush(ficheiroLogs);
 }
@@ -58,14 +64,19 @@ void registarLog(const char *nivel, const char *modulo,
     struct tm *tempoLocal = localtime(&agora);
 
     /* Formato: YYYY-MM-DD HH:MM:SS;NIVEL;MODULO;ACAO;DETALHE */
-    fprintf(ficheiroLogs, "%04d-%02d-%02d %02d:%02d:%02d;%s;%s;%s;%s\n",
-            tempoLocal->tm_year + 1900,
-            tempoLocal->tm_mon  + 1,
-            tempoLocal->tm_mday,
-            tempoLocal->tm_hour,
-            tempoLocal->tm_min,
-            tempoLocal->tm_sec,
-            nivel, modulo, acao, detalhe);
+    if (tempoLocal != NULL) {
+        fprintf(ficheiroLogs, "%04d-%02d-%02d %02d:%02d:%02d;%s;%s;%s;%s\n",
+                tempoLocal->tm_year + 1900,
+                tempoLocal->tm_mon  + 1,
+                tempoLocal->tm_mday,
+                tempoLocal->tm_hour,
+                tempoLocal->tm_min,
+                tempoLocal->tm_sec,
+                nivel, modulo, acao, detalhe);
+    } else {
+        fprintf(ficheiroLogs, "????-??-?? ??:??:??;%s;%s;%s;%s\n",
+                nivel, modulo, acao, detalhe);
+    }
 
     fflush(ficheiroLogs);
 }
@@ -77,13 +88,19 @@ void fecharLogs(void) {
     time_t agora = time(NULL);
     struct tm *tempoLocal = localtime(&agora);
 
-    fprintf(ficheiroLogs, "%04d-%02d-%02d %02d:%02d:%02d;INFO;SISTEMA;ENCERRAR;Sessão encerrada\n",
-            tempoLocal->tm_year + 1900,
-            tempoLocal->tm_mon  + 1,
-            tempoLocal->tm_mday,
-            tempoLocal->tm_hour,
-            tempoLocal->tm_min,
-            tempoLocal->tm_sec);
+    if (tempoLocal != NULL) {
+        fprintf(ficheiroLogs,
+                "%04d-%02d-%02d %02d:%02d:%02d;INFO;SISTEMA;ENCERRAR;Sessão encerrada\n",
+                tempoLocal->tm_year + 1900,
+                tempoLocal->tm_mon  + 1,
+                tempoLocal->tm_mday,
+                tempoLocal->tm_hour,
+                tempoLocal->tm_min,
+                tempoLocal->tm_sec);
+    } else {
+        fprintf(ficheiroLogs, "????-??-?? ??:??:??;INFO;SISTEMA;ENCERRAR;Sessão encerrada\n");
+    }
+
     fprintf(ficheiroLogs, "=== SESSÃO ENCERRADA ===\n\n");
 
     fclose(ficheiroLogs);

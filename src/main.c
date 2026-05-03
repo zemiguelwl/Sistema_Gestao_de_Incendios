@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <sys/stat.h>
 #include "modelos.h"
 #include "menu.h"
 #include "persistencia.h"
@@ -8,6 +9,10 @@
 /* Configuração da consola — apenas compilado em Windows */
 #ifdef _WIN32
 #include <windows.h>
+#include <direct.h>
+#define CRIAR_DIRETORIO(p) _mkdir(p)
+#else
+#define CRIAR_DIRETORIO(p) mkdir((p), 0755)
 #endif
 
 /**
@@ -35,6 +40,10 @@ int main(void) {
 #endif
 
     SistemaGestaoIncendios sistema;
+
+    /* Garantir que os diretórios de dados e logs existem (ignora erro se já existirem) */
+    (void)CRIAR_DIRETORIO("data");
+    (void)CRIAR_DIRETORIO("logs");
 
     /* Inicializar sistema de logs */
     inicializarLogs();

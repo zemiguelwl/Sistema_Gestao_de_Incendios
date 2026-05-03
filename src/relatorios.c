@@ -129,8 +129,9 @@ void relatorioOcorrenciasPorPrioridade(const SistemaGestaoIncendios *sistema) {
 /* ========================================================================= */
 
 void relatorioTempoRespostaOcorrencias(const SistemaGestaoIncendios *sistema) {
-    int soma = 0, count = 0;
-    int minVal = 999999999, maxVal = 0;
+    long soma = 0;
+    int  count = 0;
+    int  minVal = 999999999, maxVal = 0;
 
     for (int i = 0; i < sistema->intervencoes.tamanho; i++) {
         const Intervencao *intv = &sistema->intervencoes.dados[i];
@@ -154,7 +155,7 @@ void relatorioTempoRespostaOcorrencias(const SistemaGestaoIncendios *sistema) {
     if (count == 0) {
         printf("Não existem intervenções iniciadas (ou dados insuficientes).\n\n");
     } else {
-        printf("Tempo médio de resposta: %d minutos\n", soma / count);
+        printf("Tempo médio de resposta: %ld minutos\n", soma / count);
         printf("Resposta mínima:         %d minutos\n", minVal);
         printf("Resposta máxima:         %d minutos\n\n", maxVal);
     }
@@ -320,8 +321,9 @@ void relatorioIntervencoesPorEstado(const SistemaGestaoIncendios *sistema) {
 /* ========================================================================= */
 
 void relatorioDuracaoMediaIntervencoes(const SistemaGestaoIncendios *sistema) {
-    int soma = 0, count = 0;
-    int minVal = 999999999, maxVal = 0;
+    long soma = 0;
+    int  count = 0;
+    int  minVal = 999999999, maxVal = 0;
 
     for (int i = 0; i < sistema->intervencoes.tamanho; i++) {
         const Intervencao *intv = &sistema->intervencoes.dados[i];
@@ -341,7 +343,7 @@ void relatorioDuracaoMediaIntervencoes(const SistemaGestaoIncendios *sistema) {
     if (count == 0) {
         printf("Nenhuma intervenção concluída (ou com fim definido).\n\n");
     } else {
-        printf("Duração média:  %d minutos\n", soma / count);
+        printf("Duração média:  %ld minutos\n", soma / count);
         printf("Duração mínima: %d minutos\n", minVal);
         printf("Duração máxima: %d minutos\n\n", maxVal);
     }

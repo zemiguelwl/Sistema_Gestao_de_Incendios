@@ -54,7 +54,7 @@ void guardarDados(const SistemaGestaoIncendios *sistema) {
 void carregarOcorrencias(SistemaGestaoIncendios *sistema) {
     FILE *f = fopen(FICHEIRO_OCORRENCIAS, "rb");
     if (f == NULL) {
-        registarLog("WARN", "PERSISTENCIA", "CARREGAR_OCORRENCIAS",
+        registarLog("WARNING", "PERSISTENCIA", "CARREGAR_OCORRENCIAS",
                     "Ficheiro não encontrado (primeira execução?)");
         return;
     }
@@ -121,14 +121,20 @@ void guardarOcorrencias(const SistemaGestaoIncendios *sistema) {
 
     const ListaOcorrencias *lista = &sistema->ocorrencias;
     int count = lista->tamanho;
+    int erroEscrita = 0;
 
-    fwrite(&count, sizeof(int), 1, f);
-    if (count > 0)
-        fwrite(lista->dados, sizeof(Ocorrencia), count, f);
+    if (fwrite(&count, sizeof(int), 1, f) != 1) erroEscrita = 1;
+    if (!erroEscrita && count > 0)
+        if (fwrite(lista->dados, sizeof(Ocorrencia), count, f) != (size_t)count)
+            erroEscrita = 1;
 
     fclose(f);
-    registarLog("INFO", "PERSISTENCIA", "GUARDAR_OCORRENCIAS",
-                "Ocorrências guardadas com sucesso");
+    if (erroEscrita)
+        registarLog("ERROR", "PERSISTENCIA", "GUARDAR_OCORRENCIAS",
+                    "Erro de escrita (disco cheio?)");
+    else
+        registarLog("INFO", "PERSISTENCIA", "GUARDAR_OCORRENCIAS",
+                    "Ocorrências guardadas com sucesso");
 }
 
 
@@ -139,7 +145,7 @@ void guardarOcorrencias(const SistemaGestaoIncendios *sistema) {
 void carregarBombeiros(SistemaGestaoIncendios *sistema) {
     FILE *f = fopen(FICHEIRO_BOMBEIROS, "rb");
     if (f == NULL) {
-        registarLog("WARN", "PERSISTENCIA", "CARREGAR_BOMBEIROS",
+        registarLog("WARNING", "PERSISTENCIA", "CARREGAR_BOMBEIROS",
                     "Ficheiro não encontrado (primeira execução?)");
         return;
     }
@@ -205,14 +211,20 @@ void guardarBombeiros(const SistemaGestaoIncendios *sistema) {
 
     const ListaBombeiros *lista = &sistema->bombeiros;
     int count = lista->tamanho;
+    int erroEscrita = 0;
 
-    fwrite(&count, sizeof(int), 1, f);
-    if (count > 0)
-        fwrite(lista->dados, sizeof(Bombeiro), count, f);
+    if (fwrite(&count, sizeof(int), 1, f) != 1) erroEscrita = 1;
+    if (!erroEscrita && count > 0)
+        if (fwrite(lista->dados, sizeof(Bombeiro), count, f) != (size_t)count)
+            erroEscrita = 1;
 
     fclose(f);
-    registarLog("INFO", "PERSISTENCIA", "GUARDAR_BOMBEIROS",
-                "Bombeiros guardados com sucesso");
+    if (erroEscrita)
+        registarLog("ERROR", "PERSISTENCIA", "GUARDAR_BOMBEIROS",
+                    "Erro de escrita (disco cheio?)");
+    else
+        registarLog("INFO", "PERSISTENCIA", "GUARDAR_BOMBEIROS",
+                    "Bombeiros guardados com sucesso");
 }
 
 
@@ -223,7 +235,7 @@ void guardarBombeiros(const SistemaGestaoIncendios *sistema) {
 void carregarEquipamentos(SistemaGestaoIncendios *sistema) {
     FILE *f = fopen(FICHEIRO_EQUIPAMENTOS, "rb");
     if (f == NULL) {
-        registarLog("WARN", "PERSISTENCIA", "CARREGAR_EQUIPAMENTOS",
+        registarLog("WARNING", "PERSISTENCIA", "CARREGAR_EQUIPAMENTOS",
                     "Ficheiro não encontrado (primeira execução?)");
         return;
     }
@@ -289,14 +301,20 @@ void guardarEquipamentos(const SistemaGestaoIncendios *sistema) {
 
     const ListaEquipamentos *lista = &sistema->equipamentos;
     int count = lista->tamanho;
+    int erroEscrita = 0;
 
-    fwrite(&count, sizeof(int), 1, f);
-    if (count > 0)
-        fwrite(lista->dados, sizeof(Equipamento), count, f);
+    if (fwrite(&count, sizeof(int), 1, f) != 1) erroEscrita = 1;
+    if (!erroEscrita && count > 0)
+        if (fwrite(lista->dados, sizeof(Equipamento), count, f) != (size_t)count)
+            erroEscrita = 1;
 
     fclose(f);
-    registarLog("INFO", "PERSISTENCIA", "GUARDAR_EQUIPAMENTOS",
-                "Equipamentos guardados com sucesso");
+    if (erroEscrita)
+        registarLog("ERROR", "PERSISTENCIA", "GUARDAR_EQUIPAMENTOS",
+                    "Erro de escrita (disco cheio?)");
+    else
+        registarLog("INFO", "PERSISTENCIA", "GUARDAR_EQUIPAMENTOS",
+                    "Equipamentos guardados com sucesso");
 }
 
 
@@ -307,7 +325,7 @@ void guardarEquipamentos(const SistemaGestaoIncendios *sistema) {
 void carregarIntervencoes(SistemaGestaoIncendios *sistema) {
     FILE *f = fopen(FICHEIRO_INTERVENCOES, "rb");
     if (f == NULL) {
-        registarLog("WARN", "PERSISTENCIA", "CARREGAR_INTERVENCOES",
+        registarLog("WARNING", "PERSISTENCIA", "CARREGAR_INTERVENCOES",
                     "Ficheiro não encontrado (primeira execução?)");
         return;
     }
@@ -342,16 +360,24 @@ void carregarIntervencoes(SistemaGestaoIncendios *sistema) {
 
     lista->tamanho = count;
 
+    /*
+     * Inicializar TODOS os ponteiros dinâmicos a NULL antes do loop.
+     * Se a leitura falhar a meio, libertarListaIntervencoes() iterará até
+     * lista->tamanho (= count) e chamará free() sobre entradas não lidas.
+     * Sem esta inicialização prévia, essas entradas conteriam lixo de memória
+     * (realloc não zera), resultando em free() com ponteiro inválido (UB).
+     */
+    for (int j = 0; j < count; j++) {
+        lista->dados[j].idsBombeiros         = NULL;
+        lista->dados[j].idsEquipamentos      = NULL;
+        lista->dados[j].capacidadeBombeiros   = 0;
+        lista->dados[j].capacidadeEquipamentos = 0;
+    }
+
     int maxId = 0;
 
     for (int i = 0; i < count; i++) {
         Intervencao *intv = &lista->dados[i];
-
-        /* Inicializar ponteiros para evitar lixo em caso de leitura parcial */
-        intv->idsBombeiros        = NULL;
-        intv->idsEquipamentos     = NULL;
-        intv->capacidadeBombeiros  = 0;
-        intv->capacidadeEquipamentos = 0;
 
         if (fread(&intv->idIntervencao, sizeof(int),      1, f) != 1 ||
             fread(&intv->idOcorrencia,  sizeof(int),      1, f) != 1 ||
@@ -438,30 +464,49 @@ void guardarIntervencoes(const SistemaGestaoIncendios *sistema) {
 
     const ListaIntervencoes *lista = &sistema->intervencoes;
     int count = lista->tamanho;
+    int erroEscrita = 0;
 
-    fwrite(&count, sizeof(int), 1, f);
+    if (fwrite(&count, sizeof(int), 1, f) != 1) erroEscrita = 1;
 
-    for (int i = 0; i < count; i++) {
+    for (int i = 0; i < count && !erroEscrita; i++) {
         const Intervencao *intv = &lista->dados[i];
 
-        fwrite(&intv->idIntervencao, sizeof(int),             1, f);
-        fwrite(&intv->idOcorrencia,  sizeof(int),             1, f);
-        fwrite(&intv->inicio,        sizeof(DataHora),        1, f);
-        fwrite(&intv->fim,           sizeof(DataHora),        1, f);
-        fwrite(&intv->fimDefinido,   sizeof(int),             1, f);
-        fwrite(&intv->estado,        sizeof(EstadoIntervencao), 1, f);
-        fwrite(&intv->ativo,         sizeof(int),             1, f);
+        if (fwrite(&intv->idIntervencao, sizeof(int),             1, f) != 1 ||
+            fwrite(&intv->idOcorrencia,  sizeof(int),             1, f) != 1 ||
+            fwrite(&intv->inicio,        sizeof(DataHora),        1, f) != 1 ||
+            fwrite(&intv->fim,           sizeof(DataHora),        1, f) != 1 ||
+            fwrite(&intv->fimDefinido,   sizeof(int),             1, f) != 1 ||
+            fwrite(&intv->estado,        sizeof(EstadoIntervencao), 1, f) != 1 ||
+            fwrite(&intv->ativo,         sizeof(int),             1, f) != 1)
+        {
+            erroEscrita = 1;
+            break;
+        }
 
-        fwrite(&intv->numBombeiros, sizeof(int), 1, f);
+        if (fwrite(&intv->numBombeiros, sizeof(int), 1, f) != 1) {
+            erroEscrita = 1; break;
+        }
         if (intv->numBombeiros > 0 && intv->idsBombeiros != NULL)
-            fwrite(intv->idsBombeiros, sizeof(int), intv->numBombeiros, f);
+            if (fwrite(intv->idsBombeiros, sizeof(int), intv->numBombeiros, f)
+                    != (size_t)intv->numBombeiros) {
+                erroEscrita = 1; break;
+            }
 
-        fwrite(&intv->numEquipamentos, sizeof(int), 1, f);
+        if (fwrite(&intv->numEquipamentos, sizeof(int), 1, f) != 1) {
+            erroEscrita = 1; break;
+        }
         if (intv->numEquipamentos > 0 && intv->idsEquipamentos != NULL)
-            fwrite(intv->idsEquipamentos, sizeof(int), intv->numEquipamentos, f);
+            if (fwrite(intv->idsEquipamentos, sizeof(int), intv->numEquipamentos, f)
+                    != (size_t)intv->numEquipamentos) {
+                erroEscrita = 1; break;
+            }
     }
 
     fclose(f);
-    registarLog("INFO", "PERSISTENCIA", "GUARDAR_INTERVENCOES",
-                "Intervenções guardadas com sucesso");
+    if (erroEscrita)
+        registarLog("ERROR", "PERSISTENCIA", "GUARDAR_INTERVENCOES",
+                    "Erro de escrita (disco cheio?)");
+    else
+        registarLog("INFO", "PERSISTENCIA", "GUARDAR_INTERVENCOES",
+                    "Intervenções guardadas com sucesso");
 }

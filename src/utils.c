@@ -482,6 +482,11 @@ const char *prioridadeParaString(PrioridadeOcorrencia prioridade) {
     }
 }
 
+/* Declarada em ocorrencias.h — implementada aqui como alias de prioridadeParaString */
+const char *prioridadeOcorrenciaParaString(PrioridadeOcorrencia prioridade) {
+    return prioridadeParaString(prioridade);
+}
+
 const char *estadoOcorrenciaParaString(EstadoOcorrencia estado) {
     switch (estado) {
         case REPORTADA:      return "Reportada";
